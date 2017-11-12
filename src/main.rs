@@ -6,7 +6,7 @@ extern crate serde_derive;
 extern crate tokio_core;
 extern crate toml;
 
-use egg_mode::entities::UrlEntity;
+use egg_mode::tweet::Tweet;
 use mammut::{Data, Mastodon, Registration};
 use mammut::apps::{AppBuilder, Scope};
 use mammut::status_builder::StatusBuilder;
@@ -47,7 +47,7 @@ fn main() {
             .with_page_size(50);
 
     'tweets: for tweet in &core.run(timeline.start()).unwrap() {
-        let tweet_text = tweet_unshorten(&tweet.text, &tweet.entities.urls);
+        let tweet_text = tweet_unshorten(&tweet);
         for toot in &mastodon_statuses {
             let toot_text = mastodon_strip_tags(&toot.content);
 
@@ -63,12 +63,22 @@ fn main() {
     }
 }
 
-fn tweet_unshorten(tweet_text: &str, urls: &Vec<UrlEntity>) -> String {
-    let mut replaced = tweet_text.to_string();
+fn tweet_unshorten(tweet: &Tweet) -> String {
+    let (mut tweet_text, urls) = match tweet.retweeted_status {
+        None => (tweet.text.clone(), &tweet.entities.urls),
+        Some(ref retweet) => (
+            format!(
+                "RT @{}: {}",
+                retweet.clone().user.unwrap().screen_name,
+                retweet.text
+            ),
+            &retweet.entities.urls,
+        ),
+    };
     for url in urls {
-        replaced = replaced.replace(&url.url, &url.expanded_url);
+        tweet_text = tweet_text.replace(&url.url, &url.expanded_url);
     }
-    replaced
+    tweet_text
 }
 
 fn mastodon_strip_tags(toot_html: &str) -> String {
