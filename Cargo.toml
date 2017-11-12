@@ -1,0 +1,11 @@
+[package]
+name = "mastodon-twitter-sync"
+version = "0.1.0"
+authors = ["Klaus Purer <klaus.purer@gmail.com>"]
+
+[dependencies]
+mammut = ">=0.9"
+toml = ">=0.4.5"
+
+[patch.crates-io]
+mammut = { path = "../Mammut" }
