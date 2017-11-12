@@ -1,3 +1,4 @@
+extern crate dissolve;
 extern crate egg_mode;
 extern crate mammut;
 #[macro_use]
@@ -5,8 +6,10 @@ extern crate serde_derive;
 extern crate tokio_core;
 extern crate toml;
 
+use egg_mode::entities::UrlEntity;
 use mammut::{Data, Mastodon, Registration};
 use mammut::apps::{AppBuilder, Scope};
+use mammut::status_builder::StatusBuilder;
 use std::io;
 use std::fs::File;
 use std::io::prelude::*;
@@ -39,30 +42,46 @@ fn main() {
 
     let mut core = Core::new().unwrap();
     let handle = core.handle();
-    /*let result = core.run(egg_mode::tweet::user_timeline(
-        twitter_config.user_id,
-        false,
-        true,
-        &token,
-        &handle,
-    )).unwrap();*/
     let mut timeline =
         egg_mode::tweet::user_timeline(twitter_config.user_id, false, true, &token, &handle)
             .with_page_size(50);
-    for tweet in &core.run(timeline.start()).unwrap() {
-        println!(
-            "<@{}> {}",
-            tweet.user.as_ref().unwrap().screen_name,
-            tweet.text
-        );
+
+    'tweets: for tweet in &core.run(timeline.start()).unwrap() {
+        let tweet_text = tweet_unshorten(&tweet.text, &tweet.entities.urls);
+        for toot in &mastodon_statuses {
+            let toot_text = mastodon_strip_tags(&toot.content);
+
+            // If the tweet already exists we can stop here and know that we are
+            // synced.
+            if toot_text == tweet_text {
+                break 'tweets;
+            }
+        }
+        // The tweet is not on Mastodon yet, let's post it.
+        println!("Posting to Mastodon: {}", tweet_text);
+        mastodon.new_status(StatusBuilder::new(tweet_text)).unwrap();
     }
+}
+
+fn tweet_unshorten(tweet_text: &str, urls: &Vec<UrlEntity>) -> String {
+    let mut replaced = tweet_text.to_string();
+    for url in urls {
+        replaced = replaced.replace(&url.url, &url.expanded_url);
+    }
+    replaced
+}
+
+fn mastodon_strip_tags(toot_html: &str) -> String {
+    let mut replaced = toot_html.to_string();
+    replaced = replaced.replace("<br />", "\n");
+    dissolve::strip_html_tags(&replaced).join("")
 }
 
 fn mastodon_register() -> Mastodon {
     let app = AppBuilder {
         client_name: "mastodon-twitter-sync",
         redirect_uris: "urn:ietf:wg:oauth:2.0:oob",
-        scopes: Scope::Read,
+        scopes: Scope::ReadWrite,
         website: None,
     };
 
