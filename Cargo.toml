@@ -4,8 +4,13 @@ version = "0.1.0"
 authors = ["Klaus Purer <klaus.purer@gmail.com>"]
 
 [dependencies]
+egg-mode = ">=0.11"
 mammut = ">=0.9"
+serde = ">=1.0"
+serde_derive = ">=1.0.19"
+tokio-core = ">=0.1.10"
 toml = ">=0.4.5"
 
 [patch.crates-io]
+#mammut = { git = "https://github.com/klausi/Mammut", branch = "klausi" }
 mammut = { path = "../Mammut" }
