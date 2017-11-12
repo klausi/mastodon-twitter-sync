@@ -92,10 +92,13 @@ fn mastodon_register() -> Mastodon {
         client_name: "mastodon-twitter-sync",
         redirect_uris: "urn:ietf:wg:oauth:2.0:oob",
         scopes: Scope::ReadWrite,
-        website: None,
+        website: Some("https://github.com/klausi/mastodon-twitter-sync"),
     };
 
-    let mut registration = Registration::new("https://mastodon.social");
+    let instance = console_input(
+        "Provide the URL of your Mastodon instance, for example https://mastodon.social ",
+    );
+    let mut registration = Registration::new(instance);
     registration.register(app).unwrap();;
     let url = registration.authorise().unwrap();
     println!("Click this link to authorize on Mastodon: {}", url);
