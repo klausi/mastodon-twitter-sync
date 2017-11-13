@@ -1,15 +1,19 @@
 extern crate dissolve;
 extern crate egg_mode;
 extern crate mammut;
+extern crate regex;
 #[macro_use]
 extern crate serde_derive;
 extern crate tokio_core;
 extern crate toml;
 
+use egg_mode::text::character_count;
+use egg_mode::tweet::DraftTweet;
 use egg_mode::tweet::Tweet;
 use mammut::{Data, Mastodon, Registration};
 use mammut::apps::{AppBuilder, Scope};
 use mammut::status_builder::StatusBuilder;
+use regex::Regex;
 use std::io;
 use std::fs::File;
 use std::io::prelude::*;
@@ -46,20 +50,44 @@ fn main() {
         egg_mode::tweet::user_timeline(twitter_config.user_id, false, true, &token, &handle)
             .with_page_size(50);
 
-    'tweets: for tweet in &core.run(timeline.start()).unwrap() {
-        let tweet_text = tweet_unshorten(&tweet);
+    let mut tweets = Vec::new();
+    for tweet in &core.run(timeline.start()).unwrap() {
+        // Replace those ugly t.co URLs in the tweet text.
+        tweets.push(tweet_unshorten(&tweet));
+    }
+
+    'tweets: for tweet in &tweets {
         for toot in &mastodon_statuses {
             let toot_text = mastodon_strip_tags(&toot.content);
 
             // If the tweet already exists we can stop here and know that we are
             // synced.
-            if toot_text == tweet_text {
+            if toot_text == *tweet {
                 break 'tweets;
             }
         }
         // The tweet is not on Mastodon yet, let's post it.
-        println!("Posting to Mastodon: {}", tweet_text);
-        mastodon.new_status(StatusBuilder::new(tweet_text)).unwrap();
+        println!("Posting to Mastodon: {}", tweet);
+        //mastodon.new_status(StatusBuilder::new(tweet_text)).unwrap();
+    }
+
+    'toots: for toot in &mastodon_statuses {
+        let toot_text = mastodon_strip_tags(&toot.content);
+        for tweet in &tweets {
+            // If the toot already exists we can stop here and know that we are
+            // synced.
+            if toot_text == *tweet {
+                break 'toots;
+            }
+        }
+        // Mastodon allows up to 500 characters, so we might need to shorten the
+        // toot.
+        let shortened = tweet_shorten(toot_text, &toot.url);
+
+        // The tweet is not on Mastodon yet, let's post it.
+        println!("Posting to Twitter: {}", shortened);
+        /*core.run(DraftTweet::new(&shortened).send(&token, &handle))
+            .unwrap();*/
     }
 }
 
@@ -81,9 +109,31 @@ fn tweet_unshorten(tweet: &Tweet) -> String {
     tweet_text
 }
 
+fn tweet_shorten(text: String, toot_url: &str) -> String {
+    let (mut char_count, _) = character_count(&text, 23, 23);
+    if char_count < 280 {
+        return text;
+    }
+    let re = Regex::new(r"[^\s]+$").unwrap();
+    let mut shortened = text.trim().to_string();
+    let mut with_link = shortened.clone();
+    while char_count > 280 {
+        // Remove the last word.
+        shortened = re.replace_all(&shortened, "").trim().to_string();
+        // Add a link to the toot that has the full text.
+        with_link = shortened.clone() + "… " + &toot_url;
+        let (new_count, _) = character_count(&with_link, 23, 23);
+        char_count = new_count;
+    }
+    with_link.to_string()
+}
+
 fn mastodon_strip_tags(toot_html: &str) -> String {
     let mut replaced = toot_html.to_string();
     replaced = replaced.replace("<br />", "\n");
+    replaced = replaced.replace("<br>", "\n");
+    replaced = replaced.replace("</p><p>", "\n\n");
+    replaced = replaced.replace("<p>", "");
     dissolve::strip_html_tags(&replaced).join("")
 }
 

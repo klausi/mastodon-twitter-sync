@@ -7,6 +7,7 @@ authors = ["Klaus Purer <klaus.purer@gmail.com>"]
 dissolve = ">=0.2.2"
 egg-mode = ">=0.11"
 mammut = ">=0.9"
+regex = ">=0.2.2"
 serde = ">=1.0"
 serde_derive = ">=1.0.19"
 tokio-core = ">=0.1.10"
