@@ -61,7 +61,7 @@ fn main() {
         // Prepare the toots to be comparable with tweets.
         // Mastodon allows up to 500 characters, so we might need to shorten the
         // toot.
-        let toot_text = tweet_shorten(mastodon_strip_tags(&toot.content), &toot.url);
+        let toot_text = tweet_shorten(&mastodon_strip_tags(&toot.content), &toot.url);
         toots.push(toot_text);
     }
 
@@ -89,7 +89,7 @@ fn main() {
             }
         }
 
-        // The tweet is not on Mastodon yet, let's post it.
+        // The toot is not on Twitter yet, let's post it.
         println!("Posting to Twitter: {}", toot);
         core.run(DraftTweet::new(&toot).send(&token, &handle))
             .unwrap();
@@ -114,7 +114,7 @@ fn tweet_unshorten(tweet: &Tweet) -> String {
     tweet_text
 }
 
-fn tweet_shorten(text: String, toot_url: &str) -> String {
+fn tweet_shorten(text: &str, toot_url: &str) -> String {
     let (mut char_count, _) = character_count(&text, 23, 23);
     let re = Regex::new(r"[^\s]+$").unwrap();
     let mut shortened = text.trim().to_string();
@@ -281,7 +281,7 @@ DIRECT MESSAGE ✉️
 ❌ Boostable
 
 https://cybre.space/media/J-amFmXPvb_Mt7toGgs #tutorial #howto
-".to_string();
+";
         let shortened_for_twitter =
             tweet_shorten(toot, "https://mastodon.social/@klausi/98999025586548863");
         assert_eq!(
