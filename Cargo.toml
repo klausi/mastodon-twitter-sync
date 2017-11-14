@@ -14,5 +14,5 @@ tokio-core = ">=0.1.10"
 toml = ">=0.4.5"
 
 [patch.crates-io]
-#mammut = { git = "https://github.com/klausi/Mammut", branch = "klausi" }
-mammut = { path = "../Mammut" }
+mammut = { git = "https://github.com/klausi/Mammut", branch = "klausi" }
+#mammut = { path = "../Mammut" }

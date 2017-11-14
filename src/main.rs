@@ -56,38 +56,43 @@ fn main() {
         tweets.push(tweet_unshorten(&tweet));
     }
 
-    'tweets: for tweet in &tweets {
-        for toot in &mastodon_statuses {
-            let toot_text = mastodon_strip_tags(&toot.content);
+    let mut toots = Vec::new();
+    for toot in &mastodon_statuses {
+        // Prepare the toots to be comparable with tweets.
+        // Mastodon allows up to 500 characters, so we might need to shorten the
+        // toot.
+        let toot_text = tweet_shorten(mastodon_strip_tags(&toot.content), &toot.url);
+        toots.push(toot_text);
+    }
 
+    'tweets: for tweet in &tweets {
+        for toot in &toots {
             // If the tweet already exists we can stop here and know that we are
             // synced.
-            if toot_text == *tweet {
+            if toot == tweet {
                 break 'tweets;
             }
         }
         // The tweet is not on Mastodon yet, let's post it.
         println!("Posting to Mastodon: {}", tweet);
-        //mastodon.new_status(StatusBuilder::new(tweet_text)).unwrap();
+        mastodon
+            .new_status(StatusBuilder::new(tweet.clone()))
+            .unwrap();
     }
 
-    'toots: for toot in &mastodon_statuses {
-        let toot_text = mastodon_strip_tags(&toot.content);
+    'toots: for toot in &toots {
         for tweet in &tweets {
             // If the toot already exists we can stop here and know that we are
             // synced.
-            if toot_text == *tweet {
+            if toot == tweet {
                 break 'toots;
             }
         }
-        // Mastodon allows up to 500 characters, so we might need to shorten the
-        // toot.
-        let shortened = tweet_shorten(toot_text, &toot.url);
 
         // The tweet is not on Mastodon yet, let's post it.
-        println!("Posting to Twitter: {}", shortened);
-        /*core.run(DraftTweet::new(&shortened).send(&token, &handle))
-            .unwrap();*/
+        println!("Posting to Twitter: {}", toot);
+        core.run(DraftTweet::new(&toot).send(&token, &handle))
+            .unwrap();
     }
 }
 
@@ -111,13 +116,13 @@ fn tweet_unshorten(tweet: &Tweet) -> String {
 
 fn tweet_shorten(text: String, toot_url: &str) -> String {
     let (mut char_count, _) = character_count(&text, 23, 23);
-    if char_count < 280 {
-        return text;
-    }
     let re = Regex::new(r"[^\s]+$").unwrap();
     let mut shortened = text.trim().to_string();
     let mut with_link = shortened.clone();
-    while char_count > 280 {
+
+    // Twitter should allow 280 characters, but their counting is unpredictable.
+    // Use 40 characters less and hope it works ¯\_(ツ)_/¯
+    while char_count > 240 {
         // Remove the last word.
         shortened = re.replace_all(&shortened, "").trim().to_string();
         // Add a link to the toot that has the full text.
@@ -243,4 +248,53 @@ fn console_input(prompt: &str) -> String {
     let mut line = String::new();
     let _ = io::stdin().read_line(&mut line).unwrap();
     line.trim().to_string()
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tweet_shortening() {
+        let toot = "#MASTODON POST PRIVACY - who can see your post?
+
+PUBLIC 🌏 Anyone can see and boost your post everywhere.
+
+UNLISTED 🔓 ✅ Tagged people
+✅ Followers
+✅ People who look for it
+❌ Local and federated timelines
+✅ Boostable
+
+FOLLOWERS ONLY 🔐 ✅ Tagged people
+✅ Followers
+❌ People who look for it
+❌ Local and federated timelines
+❌ Boostable
+
+DIRECT MESSAGE ✉️
+✅ Tagged people
+❌ Followers
+❌ People who look for it
+❌ Local and federated timelines
+❌ Boostable
+
+https://cybre.space/media/J-amFmXPvb_Mt7toGgs #tutorial #howto
+".to_string();
+        let shortened_for_twitter =
+            tweet_shorten(toot, "https://mastodon.social/@klausi/98999025586548863");
+        assert_eq!(
+            shortened_for_twitter,
+            "#MASTODON POST PRIVACY - who can see your post?
+
+PUBLIC 🌏 Anyone can see and boost your post everywhere.
+
+UNLISTED 🔓 ✅ Tagged people
+✅ Followers
+✅ People who look for it
+❌ Local and federated timelines
+✅ Boostable… https://mastodon.social/@klausi/98999025586548863"
+        );
+    }
 }
