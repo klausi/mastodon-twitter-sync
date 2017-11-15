@@ -12,6 +12,7 @@ use egg_mode::tweet::DraftTweet;
 use egg_mode::tweet::Tweet;
 use mammut::{Data, Mastodon, Registration};
 use mammut::apps::{AppBuilder, Scope};
+use mammut::entities::status::Status;
 use mammut::status_builder::StatusBuilder;
 use regex::Regex;
 use std::io;
@@ -56,14 +57,7 @@ fn main() {
         tweets.push(tweet_unshorten(&tweet));
     }
 
-    let mut toots = Vec::new();
-    for toot in &mastodon_statuses {
-        // Prepare the toots to be comparable with tweets.
-        // Mastodon allows up to 500 characters, so we might need to shorten the
-        // toot.
-        let toot_text = tweet_shorten(&mastodon_strip_tags(&toot.content), &toot.url);
-        toots.push(toot_text);
-    }
+    let toots = prepare_toots(&mastodon_statuses);
 
     'tweets: for tweet in &tweets {
         for toot in &toots {
@@ -94,6 +88,20 @@ fn main() {
         core.run(DraftTweet::new(&toot).send(&token, &handle))
             .unwrap();
     }
+}
+
+fn prepare_toots(mastodon_statuses: &Vec<Status>) -> Vec<String> {
+    let mut toots = Vec::new();
+    for toot in mastodon_statuses {
+        // Prepare the toots to be comparable with tweets.
+        let toot_text = mastodon_strip_tags(&toot.content);
+        // Mastodon allows up to 500 characters, so we might need to shorten the
+        // toot. Also add the shortened version of the toot for comparison.
+        let shortened_toot = tweet_shorten(&toot_text, &toot.url);
+        toots.push(toot_text);
+        toots.push(shortened_toot);
+    }
+    toots
 }
 
 fn tweet_unshorten(tweet: &Tweet) -> String {
@@ -253,6 +261,8 @@ fn console_input(prompt: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    extern crate serde_json;
+
     use super::*;
 
     #[test]
@@ -296,5 +306,24 @@ UNLISTED 🔓 ✅ Tagged people
 ❌ Local and federated timelines
 ✅ Boostable… https://mastodon.social/@klausi/98999025586548863"
         );
+    }
+
+    #[test]
+    fn toot_preparing() {
+        let json = {
+            let mut file = File::open("src/mastodon_status.json").unwrap();
+            let mut ret = String::new();
+            file.read_to_string(&mut ret).unwrap();
+            ret
+        };
+        let mut status: Status = serde_json::from_str(&json).unwrap();
+        let long_toot = "test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test";
+        status.content = long_toot.to_string();
+        let statuses = vec![status];
+        let prepared_toots = prepare_toots(&statuses);
+        // Original toot should be there.
+        assert_eq!(prepared_toots[0], long_toot);
+        // Shortened toot should be there.
+        assert_eq!(prepared_toots[1], "test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test… https://mastodon.social/@example/99009862234659599");
     }
 }

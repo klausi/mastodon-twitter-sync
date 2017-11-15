@@ -13,6 +13,9 @@ serde_derive = ">=1.0.19"
 tokio-core = ">=0.1.10"
 toml = ">=0.4.5"
 
+[dev-dependencies]
+serde_json = ">=1.0.6"
+
 [patch.crates-io]
 mammut = { git = "https://github.com/klausi/Mammut", branch = "klausi" }
 #mammut = { path = "../Mammut" }
