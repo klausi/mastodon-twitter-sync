@@ -84,7 +84,7 @@ fn determine_posts(mastodon_statuses: &Vec<Status>, twitter_statuses: &Vec<Tweet
     let mut tweets = Vec::new();
     for tweet in twitter_statuses {
         // Replace those ugly t.co URLs in the tweet text.
-        tweets.push(tweet_unshorten(&tweet));
+        tweets.push(tweet_unshorten_decode(&tweet));
     }
 
     let compare_toots = prepare_compare_toots(&mastodon_statuses);
@@ -103,7 +103,7 @@ fn determine_posts(mastodon_statuses: &Vec<Status>, twitter_statuses: &Vec<Tweet
 
     'toots: for toot in mastodon_statuses {
         // Shorten and prepare the toots to be ready for posting on Twitter.
-        let toot_text = mastodon_strip_tags(&toot.content);
+        let toot_text = mastodon_toot_get_text(&toot);
         let shortened_toot = tweet_shorten(&toot_text, &toot.url);
         for tweet in &tweets {
             // If the toot already exists we can stop here and know that we are
@@ -124,7 +124,7 @@ fn prepare_compare_toots(mastodon_statuses: &Vec<Status>) -> Vec<String> {
     let mut toots = Vec::new();
     for toot in mastodon_statuses {
         // Prepare the toots to be comparable with tweets.
-        let toot_text = mastodon_strip_tags(&toot.content);
+        let toot_text = mastodon_toot_get_text(&toot);
         // Mastodon allows up to 500 characters, so we might need to shorten the
         // toot. Also add the shortened version of the toot for comparison.
         let shortened_toot = tweet_shorten(&toot_text, &toot.url);
@@ -175,8 +175,14 @@ fn tweet_shorten(text: &str, toot_url: &str) -> String {
     with_link.to_string()
 }
 
-fn mastodon_strip_tags(toot_html: &str) -> String {
-    let mut replaced = toot_html.to_string();
+// Prefix boost toots with the author and strip HTML tags.
+fn mastodon_toot_get_text(toot: &Status) -> String {
+    let mut replaced = match toot.reblog {
+        None => toot.content.clone(),
+        Some(ref reblog) => {
+            format!("RT @{}: {}", reblog.account.username, reblog.content)
+        }
+    };
     replaced = replaced.replace("<br />", "\n");
     replaced = replaced.replace("<br>", "\n");
     replaced = replaced.replace("</p><p>", "\n\n");
@@ -399,6 +405,20 @@ UNLISTED 🔓 ✅ Tagged people
         status.text = "You &amp; me!".to_string();
         let posts = determine_posts(&Vec::new(), &vec![status]);
         assert_eq!(posts.toots[0], "You & me!");
+    }
+
+    // Test that a boost on Mastodon is prefixed with "RT @..." when posted to
+    // Twitter.
+    #[test]
+    fn mastodon_boost() {
+        let mut reblog = get_mastodon_status();
+        reblog.content = "<p>Some example toooot!</p>".to_string();
+        let mut status = get_mastodon_status();
+        status.reblog = Some(Box::new(reblog));
+        status.reblogged = Some(true);
+
+        let posts = determine_posts(&vec![status], &Vec::new());
+        assert_eq!(posts.tweets[0], "RT @example: Some example toooot!");
     }
 
     fn get_mastodon_status() -> Status {
