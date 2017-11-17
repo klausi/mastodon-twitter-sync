@@ -51,8 +51,37 @@ fn main() {
         egg_mode::tweet::user_timeline(twitter_config.user_id, false, true, &token, &handle)
             .with_page_size(50);
 
+    let tweets = core.run(timeline.start()).unwrap();
+    let posts = determine_posts(&mastodon_statuses, &*tweets);
+
+    for toot in posts.toots {
+        println!("Posting to Mastodon: {}", toot);
+        mastodon
+            .new_status(StatusBuilder::new(toot))
+            .unwrap();
+    }
+
+    for tweet in posts.tweets {
+        println!("Posting to Twitter: {}", tweet);
+        core.run(DraftTweet::new(&tweet).send(&token, &handle))
+            .unwrap();
+    }
+}
+
+// Represents new status updates that should be posted to Twitter (tweets) and
+// Mastodon (toots).
+struct StatusUpdates {
+    tweets: Vec<String>,
+    toots: Vec<String>,
+}
+
+fn determine_posts(mastodon_statuses: &Vec<Status>, twitter_statuses: &Vec<Tweet>) -> StatusUpdates {
+    let mut updates = StatusUpdates {
+        tweets: Vec::new(),
+        toots: Vec::new(),
+    };
     let mut tweets = Vec::new();
-    for tweet in &core.run(timeline.start()).unwrap() {
+    for tweet in twitter_statuses {
         // Replace those ugly t.co URLs in the tweet text.
         tweets.push(tweet_unshorten(&tweet));
     }
@@ -68,10 +97,7 @@ fn main() {
             }
         }
         // The tweet is not on Mastodon yet, let's post it.
-        println!("Posting to Mastodon: {}", tweet);
-        mastodon
-            .new_status(StatusBuilder::new(tweet.clone()))
-            .unwrap();
+        updates.toots.push(tweet.to_string());
     }
 
     'toots: for toot in &toots {
@@ -82,12 +108,10 @@ fn main() {
                 break 'toots;
             }
         }
-
         // The toot is not on Twitter yet, let's post it.
-        println!("Posting to Twitter: {}", toot);
-        core.run(DraftTweet::new(&toot).send(&token, &handle))
-            .unwrap();
+        updates.tweets.push(toot.to_string());
     }
+    updates
 }
 
 fn prepare_toots(mastodon_statuses: &Vec<Status>) -> Vec<String> {
