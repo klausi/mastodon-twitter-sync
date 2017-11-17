@@ -86,10 +86,10 @@ fn determine_posts(mastodon_statuses: &Vec<Status>, twitter_statuses: &Vec<Tweet
         tweets.push(tweet_unshorten(&tweet));
     }
 
-    let toots = prepare_toots(&mastodon_statuses);
+    let compare_toots = prepare_compare_toots(&mastodon_statuses);
 
     'tweets: for tweet in &tweets {
-        for toot in &toots {
+        for toot in &compare_toots {
             // If the tweet already exists we can stop here and know that we are
             // synced.
             if toot == tweet {
@@ -100,21 +100,26 @@ fn determine_posts(mastodon_statuses: &Vec<Status>, twitter_statuses: &Vec<Tweet
         updates.toots.push(tweet.to_string());
     }
 
-    'toots: for toot in &toots {
+    'toots: for toot in mastodon_statuses {
+        // Shorten and prepare the toots to be ready for posting on Twitter.
+        let toot_text = mastodon_strip_tags(&toot.content);
+        let shortened_toot = tweet_shorten(&toot_text, &toot.url);
         for tweet in &tweets {
             // If the toot already exists we can stop here and know that we are
             // synced.
-            if toot == tweet {
+            if &toot_text == tweet || &shortened_toot == tweet {
                 break 'toots;
             }
         }
         // The toot is not on Twitter yet, let's post it.
-        updates.tweets.push(toot.to_string());
+        updates.tweets.push(shortened_toot);
     }
     updates
 }
 
-fn prepare_toots(mastodon_statuses: &Vec<Status>) -> Vec<String> {
+// Prepare a list of variations of Mastodon toots that could all be synced
+// already.
+fn prepare_compare_toots(mastodon_statuses: &Vec<Status>) -> Vec<String> {
     let mut toots = Vec::new();
     for toot in mastodon_statuses {
         // Prepare the toots to be comparable with tweets.
@@ -122,8 +127,10 @@ fn prepare_toots(mastodon_statuses: &Vec<Status>) -> Vec<String> {
         // Mastodon allows up to 500 characters, so we might need to shorten the
         // toot. Also add the shortened version of the toot for comparison.
         let shortened_toot = tweet_shorten(&toot_text, &toot.url);
+        if toot_text != shortened_toot {
+            toots.push(shortened_toot);
+        }
         toots.push(toot_text);
-        toots.push(shortened_toot);
     }
     toots
 }
@@ -285,9 +292,12 @@ fn console_input(prompt: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    extern crate chrono;
     extern crate serde_json;
 
     use super::*;
+    use self::chrono::prelude::*;
+    use egg_mode::tweet::{TweetEntities, TweetSource};
 
     #[test]
     fn tweet_shortening() {
@@ -332,22 +342,91 @@ UNLISTED 🔓 ✅ Tagged people
         );
     }
 
+    // Test that if a long Mastodon toot already exists as short version on
+    // Twitter that it is not posted again.
     #[test]
-    fn toot_preparing() {
+    fn short_version_on_twitter() {
+        let mut status = get_mastodon_status();
+        let long_toot = "test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test";
+        status.content = long_toot.to_string();
+
+        let mut tweet = get_twitter_status();
+        tweet.text = tweet_shorten(long_toot, &status.url);
+
+        let tweets = vec![tweet];
+        let statuses = vec![status];
+        let posts = determine_posts(&statuses, &tweets);
+        assert!(posts.toots.is_empty());
+        assert!(posts.tweets.is_empty());
+    }
+
+    // Test an over long post of 280 characters that is the exact same on both
+    // Mastodon and Twitter. No sync work necessary.
+    #[test]
+    fn over_long_status_on_both() {
+        let mut status = get_mastodon_status();
+        let long_toot = "test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test";
+        status.content = long_toot.to_string();
+
+        let mut tweet = get_twitter_status();
+        tweet.text = long_toot.to_string();
+
+        let tweets = vec![tweet];
+        let statuses = vec![status];
+        let posts = determine_posts(&statuses, &tweets);
+        assert!(posts.toots.is_empty());
+        assert!(posts.tweets.is_empty());
+    }
+
+    fn get_mastodon_status() -> Status {
         let json = {
             let mut file = File::open("src/mastodon_status.json").unwrap();
             let mut ret = String::new();
             file.read_to_string(&mut ret).unwrap();
             ret
         };
-        let mut status: Status = serde_json::from_str(&json).unwrap();
-        let long_toot = "test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test";
-        status.content = long_toot.to_string();
-        let statuses = vec![status];
-        let prepared_toots = prepare_toots(&statuses);
-        // Original toot should be there.
-        assert_eq!(prepared_toots[0], long_toot);
-        // Shortened toot should be there.
-        assert_eq!(prepared_toots[1], "test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test… https://mastodon.social/@example/99009862234659599");
+        let status: Status = serde_json::from_str(&json).unwrap();
+        status
+    }
+
+    fn get_twitter_status() -> Tweet {
+        Tweet {
+            coordinates: None,
+            created_at: Utc::now(),
+            current_user_retweet: None,
+            display_text_range: None,
+            entities: TweetEntities {
+                hashtags: Vec::new(),
+                symbols: Vec::new(),
+                urls: Vec::new(),
+                user_mentions: Vec::new(),
+                media: None,
+            },
+            extended_entities: None,
+            favorite_count: 0,
+            favorited: None,
+            id: 123456,
+            in_reply_to_user_id: None,
+            in_reply_to_screen_name: None,
+            in_reply_to_status_id: None,
+            lang: "".to_string(),
+            place: None,
+            possibly_sensitive: None,
+            quoted_status_id: None,
+            quoted_status: None,
+            retweet_count: 0,
+            retweeted: None,
+            retweeted_status: None,
+            source: TweetSource {
+                name: "".to_string(),
+                url: "".to_string(),
+            },
+            text: "".to_string(),
+            truncated: false,
+            user: None,
+            withheld_copyright: false,
+            withheld_in_countries: None,
+            withheld_scope: None,
+        }
     }
 }
