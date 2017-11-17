@@ -70,6 +70,7 @@ fn main() {
 
 // Represents new status updates that should be posted to Twitter (tweets) and
 // Mastodon (toots).
+#[derive(Debug)]
 struct StatusUpdates {
     tweets: Vec<String>,
     toots: Vec<String>,
@@ -135,7 +136,8 @@ fn prepare_compare_toots(mastodon_statuses: &Vec<Status>) -> Vec<String> {
     toots
 }
 
-fn tweet_unshorten(tweet: &Tweet) -> String {
+// Replace t.co URLs and HTML entity decode &amp;
+fn tweet_unshorten_decode(tweet: &Tweet) -> String {
     let (mut tweet_text, urls) = match tweet.retweeted_status {
         None => (tweet.text.clone(), &tweet.entities.urls),
         Some(ref retweet) => (
@@ -150,7 +152,8 @@ fn tweet_unshorten(tweet: &Tweet) -> String {
     for url in urls {
         tweet_text = tweet_text.replace(&url.url, &url.expanded_url);
     }
-    tweet_text
+    // Twitterposts have HTML entities such as &amp;, we need to decode them.
+    dissolve::strip_html_tags(&tweet_text).join("")
 }
 
 fn tweet_shorten(text: &str, toot_url: &str) -> String {
@@ -376,6 +379,26 @@ UNLISTED 🔓 ✅ Tagged people
         let posts = determine_posts(&statuses, &tweets);
         assert!(posts.toots.is_empty());
         assert!(posts.tweets.is_empty());
+    }
+
+    // Test that Mastodon status text is posted HTML entity decoded to Twitter.
+    // &amp; => &
+    #[test]
+    fn mastodon_html_decode() {
+        let mut status = get_mastodon_status();
+        status.content = "<p>You &amp; me!</p>".to_string();
+        let posts = determine_posts(&vec![status], &Vec::new());
+        assert_eq!(posts.tweets[0], "You & me!");
+    }
+
+    // Test that Twitter status text is posted HTML entity decoded to Mastodon.
+    // &amp; => &
+    #[test]
+    fn twitter_html_decode() {
+        let mut status = get_twitter_status();
+        status.text = "You &amp; me!".to_string();
+        let posts = determine_posts(&Vec::new(), &vec![status]);
+        assert_eq!(posts.toots[0], "You & me!");
     }
 
     fn get_mastodon_status() -> Status {
