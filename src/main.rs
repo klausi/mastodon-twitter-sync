@@ -27,7 +27,7 @@ fn main() {
     };
 
     let account = mastodon.verify().unwrap();
-    let mastodon_statuses = mastodon.statuses(account.id, false, true).unwrap();
+    let mastodon_statuses = mastodon.statuses(account.id, false, true, None, None).unwrap();
 
     let twitter_config = match File::open("twitter.toml") {
         Ok(f) => twitter_load_from_config(f),
