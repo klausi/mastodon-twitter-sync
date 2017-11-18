@@ -1,3 +1,4 @@
+extern crate chrono;
 extern crate dissolve;
 extern crate egg_mode;
 extern crate mammut;
@@ -7,6 +8,8 @@ extern crate serde_derive;
 extern crate tokio_core;
 extern crate toml;
 
+use chrono::Duration;
+use chrono::prelude::*;
 use egg_mode::text::character_count;
 use egg_mode::tweet::DraftTweet;
 use egg_mode::tweet::Tweet;
@@ -66,6 +69,22 @@ fn main() {
         core.run(DraftTweet::new(&tweet).send(&token, &handle))
             .unwrap();
     }
+
+    if mastodon_statuses.len() == 0 {
+        return;
+    }
+    //let mut since_id = None;
+    let mut max_id = None;
+    loop {
+        let statuses = mastodon.statuses(account.id, false, false, None, max_id).unwrap();
+        if statuses.len() == 0 {
+            break;
+        }
+        max_id = Some(statuses.last().unwrap().id);
+        let to_delete = mastodon_get_toots_to_delete(&statuses);
+        println!("{:#?}", to_delete);
+    }
+
 }
 
 // Represents new status updates that should be posted to Twitter (tweets) and
@@ -190,6 +209,19 @@ fn mastodon_toot_get_text(toot: &Status) -> String {
     dissolve::strip_html_tags(&replaced).join("")
 }
 
+// Search a list of mastodon statuses if they are older than 3 months and return
+// their IDs.
+fn mastodon_get_toots_to_delete(toots: &Vec<Status>) -> Vec<u64> {
+    let three_months_ago = Utc::now() - Duration::days(90);
+    let mut to_delete = Vec::new();
+    for toot in toots {
+        if toot.created_at < three_months_ago {
+            to_delete.push(toot.id);
+        }
+    }
+    to_delete
+}
+
 fn mastodon_register() -> Mastodon {
     let app = AppBuilder {
         client_name: "mastodon-twitter-sync",
@@ -305,7 +337,6 @@ mod tests {
     extern crate serde_json;
 
     use super::*;
-    use self::chrono::prelude::*;
     use egg_mode::tweet::{TweetEntities, TweetSource};
 
     #[test]
