@@ -5,6 +5,7 @@ extern crate mammut;
 extern crate regex;
 #[macro_use]
 extern crate serde_derive;
+extern crate serde_json;
 extern crate tokio_core;
 extern crate toml;
 
@@ -15,9 +16,11 @@ use egg_mode::tweet::DraftTweet;
 use egg_mode::tweet::Tweet;
 use mammut::{Data, Mastodon, Registration};
 use mammut::apps::{AppBuilder, Scope};
+use mammut::entities::account::Account;
 use mammut::entities::status::Status;
 use mammut::status_builder::StatusBuilder;
 use regex::Regex;
+use std::collections::HashMap;
 use std::io;
 use std::fs::File;
 use std::io::prelude::*;
@@ -73,17 +76,8 @@ fn main() {
     if mastodon_statuses.len() == 0 {
         return;
     }
-    //let mut since_id = None;
-    let mut max_id = None;
-    loop {
-        let statuses = mastodon.statuses(account.id, false, false, None, max_id).unwrap();
-        if statuses.len() == 0 {
-            break;
-        }
-        max_id = Some(statuses.last().unwrap().id);
-        let to_delete = mastodon_get_toots_to_delete(&statuses);
-        println!("{:#?}", to_delete);
-    }
+
+    let dates = mastodon_load_toot_dates(&mastodon, &account);
 
 }
 
@@ -222,6 +216,46 @@ fn mastodon_get_toots_to_delete(toots: &Vec<Status>) -> Vec<u64> {
     to_delete
 }
 
+fn mastodon_load_toot_dates(mastodon: &Mastodon, account: &Account) -> HashMap<u64, DateTime<Utc>> {
+    match mastodon_load_toot_dates_from_cache() {
+        Some(dates) => dates,
+        None => mastodon_fetch_toot_dates(mastodon, account),
+    }
+}
+
+fn mastodon_load_toot_dates_from_cache() -> Option<HashMap<u64, DateTime<Utc>>>{
+    let cache = match File::open("mastodon_cache.json") {
+        Ok(mut file) => {
+            let mut json = String::new();
+            file.read_to_string(&mut json).unwrap();
+            serde_json::from_str(&json).unwrap()
+        },
+        Err(_) => return None,
+    };
+    Some(cache)
+}
+
+fn mastodon_fetch_toot_dates(mastodon: &Mastodon, account: &Account) -> HashMap<u64, DateTime<Utc>> {
+    let mut max_id = None;
+    let mut dates = HashMap::new();
+    loop {
+        let statuses = mastodon.statuses(account.id, false, false, None, max_id).unwrap();
+        if statuses.len() == 0 {
+            break;
+        }
+        max_id = Some(statuses.last().unwrap().id);
+        for status in statuses {
+            dates.insert(status.id, status.created_at);
+        }
+    }
+
+    let json = serde_json::to_string(&dates).unwrap();
+    let mut file = File::create("mastodon_cache.json").unwrap();
+    file.write_all(json.as_bytes()).unwrap();
+
+    dates
+}
+
 fn mastodon_register() -> Mastodon {
     let app = AppBuilder {
         client_name: "mastodon-twitter-sync",
@@ -334,7 +368,6 @@ fn console_input(prompt: &str) -> String {
 #[cfg(test)]
 mod tests {
     extern crate chrono;
-    extern crate serde_json;
 
     use super::*;
     use egg_mode::tweet::{TweetEntities, TweetSource};
