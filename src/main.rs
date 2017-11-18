@@ -15,14 +15,16 @@ use egg_mode::text::character_count;
 use egg_mode::tweet::DraftTweet;
 use egg_mode::tweet::Tweet;
 use mammut::{Data, Mastodon, Registration};
+use mammut::Error as MammutError;
 use mammut::apps::{AppBuilder, Scope};
 use mammut::entities::account::Account;
 use mammut::entities::status::Status;
 use mammut::status_builder::StatusBuilder;
 use regex::Regex;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::io;
 use std::fs::File;
+use std::fs::remove_file;
 use std::io::prelude::*;
 use tokio_core::reactor::Core;
 
@@ -73,12 +75,39 @@ fn main() {
             .unwrap();
     }
 
-    if mastodon_statuses.len() == 0 {
+    if mastodon_statuses.is_empty() {
         return;
     }
 
-    let dates = mastodon_load_toot_dates(&mastodon, &account);
+    let cache_file = "mastodon_cache.json";
+    let dates = mastodon_load_toot_dates(&mastodon, &account, cache_file);
+    let mut remove_dates = Vec::new();
+    let three_months_ago = Utc::now() - Duration::days(90);
+    for (date, toot_id) in dates.range(..three_months_ago) {
+        println!("Deleting toot {} from {}", toot_id, date);
+        remove_dates.push(date);
+        // The status could have been deleted already by the user, ignore API
+        // errors in that case.
+        if let Err(error) = mastodon.delete_status(*toot_id) {
+            match error {
+                MammutError::Api(_) => {},
+                _ => Err(error).unwrap(),
+            }
+        }
+    }
 
+    let mut new_dates = dates.clone();
+    for remove_date in remove_dates {
+        new_dates.remove(remove_date);
+    }
+
+    if new_dates.is_empty() {
+        remove_file(cache_file).unwrap();
+    } else {
+        let json = serde_json::to_string(&new_dates).unwrap();
+        let mut file = File::create(cache_file).unwrap();
+        file.write_all(json.as_bytes()).unwrap();
+    }
 }
 
 // Represents new status updates that should be posted to Twitter (tweets) and
@@ -203,28 +232,15 @@ fn mastodon_toot_get_text(toot: &Status) -> String {
     dissolve::strip_html_tags(&replaced).join("")
 }
 
-// Search a list of mastodon statuses if they are older than 3 months and return
-// their IDs.
-fn mastodon_get_toots_to_delete(toots: &Vec<Status>) -> Vec<u64> {
-    let three_months_ago = Utc::now() - Duration::days(90);
-    let mut to_delete = Vec::new();
-    for toot in toots {
-        if toot.created_at < three_months_ago {
-            to_delete.push(toot.id);
-        }
-    }
-    to_delete
-}
-
-fn mastodon_load_toot_dates(mastodon: &Mastodon, account: &Account) -> HashMap<u64, DateTime<Utc>> {
-    match mastodon_load_toot_dates_from_cache() {
+fn mastodon_load_toot_dates(mastodon: &Mastodon, account: &Account, cache_file: &str) -> BTreeMap<DateTime<Utc>, u64> {
+    match mastodon_load_toot_dates_from_cache(cache_file) {
         Some(dates) => dates,
-        None => mastodon_fetch_toot_dates(mastodon, account),
+        None => mastodon_fetch_toot_dates(mastodon, account, cache_file),
     }
 }
 
-fn mastodon_load_toot_dates_from_cache() -> Option<HashMap<u64, DateTime<Utc>>>{
-    let cache = match File::open("mastodon_cache.json") {
+fn mastodon_load_toot_dates_from_cache(cache_file: &str) -> Option<BTreeMap<DateTime<Utc>, u64>>{
+    let cache = match File::open(cache_file) {
         Ok(mut file) => {
             let mut json = String::new();
             file.read_to_string(&mut json).unwrap();
@@ -235,9 +251,9 @@ fn mastodon_load_toot_dates_from_cache() -> Option<HashMap<u64, DateTime<Utc>>>{
     Some(cache)
 }
 
-fn mastodon_fetch_toot_dates(mastodon: &Mastodon, account: &Account) -> HashMap<u64, DateTime<Utc>> {
+fn mastodon_fetch_toot_dates(mastodon: &Mastodon, account: &Account, cache_file: &str) -> BTreeMap<DateTime<Utc>, u64> {
     let mut max_id = None;
-    let mut dates = HashMap::new();
+    let mut dates = BTreeMap::new();
     loop {
         let statuses = mastodon.statuses(account.id, false, false, None, max_id).unwrap();
         if statuses.len() == 0 {
@@ -245,12 +261,12 @@ fn mastodon_fetch_toot_dates(mastodon: &Mastodon, account: &Account) -> HashMap<
         }
         max_id = Some(statuses.last().unwrap().id);
         for status in statuses {
-            dates.insert(status.id, status.created_at);
+            dates.insert(status.created_at, status.id);
         }
     }
 
     let json = serde_json::to_string(&dates).unwrap();
-    let mut file = File::create("mastodon_cache.json").unwrap();
+    let mut file = File::create(cache_file).unwrap();
     file.write_all(json.as_bytes()).unwrap();
 
     dates
