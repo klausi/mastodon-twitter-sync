@@ -35,7 +35,9 @@ fn main() {
     };
 
     let account = mastodon.verify().unwrap();
-    let mastodon_statuses = mastodon.statuses(account.id, false, true, None, None).unwrap();
+    let mastodon_statuses = mastodon
+        .statuses(account.id, false, true, None, None)
+        .unwrap();
 
     let twitter_config = match File::open("twitter.toml") {
         Ok(f) => twitter_load_from_config(f),
@@ -64,9 +66,7 @@ fn main() {
 
     for toot in posts.toots {
         println!("Posting to Mastodon: {}", toot);
-        mastodon
-            .new_status(StatusBuilder::new(toot))
-            .unwrap();
+        mastodon.new_status(StatusBuilder::new(toot)).unwrap();
     }
 
     for tweet in posts.tweets {
@@ -90,7 +90,7 @@ fn main() {
         // errors in that case.
         if let Err(error) = mastodon.delete_status(*toot_id) {
             match error {
-                MammutError::Api(_) => {},
+                MammutError::Api(_) => {}
                 _ => Err(error).unwrap(),
             }
         }
@@ -118,7 +118,10 @@ struct StatusUpdates {
     toots: Vec<String>,
 }
 
-fn determine_posts(mastodon_statuses: &Vec<Status>, twitter_statuses: &Vec<Tweet>) -> StatusUpdates {
+fn determine_posts(
+    mastodon_statuses: &Vec<Status>,
+    twitter_statuses: &Vec<Tweet>,
+) -> StatusUpdates {
     let mut updates = StatusUpdates {
         tweets: Vec::new(),
         toots: Vec::new(),
@@ -221,9 +224,7 @@ fn tweet_shorten(text: &str, toot_url: &str) -> String {
 fn mastodon_toot_get_text(toot: &Status) -> String {
     let mut replaced = match toot.reblog {
         None => toot.content.clone(),
-        Some(ref reblog) => {
-            format!("RT @{}: {}", reblog.account.username, reblog.content)
-        }
+        Some(ref reblog) => format!("RT @{}: {}", reblog.account.username, reblog.content),
     };
     replaced = replaced.replace("<br />", "\n");
     replaced = replaced.replace("<br>", "\n");
@@ -232,30 +233,40 @@ fn mastodon_toot_get_text(toot: &Status) -> String {
     dissolve::strip_html_tags(&replaced).join("")
 }
 
-fn mastodon_load_toot_dates(mastodon: &Mastodon, account: &Account, cache_file: &str) -> BTreeMap<DateTime<Utc>, u64> {
+fn mastodon_load_toot_dates(
+    mastodon: &Mastodon,
+    account: &Account,
+    cache_file: &str,
+) -> BTreeMap<DateTime<Utc>, u64> {
     match mastodon_load_toot_dates_from_cache(cache_file) {
         Some(dates) => dates,
         None => mastodon_fetch_toot_dates(mastodon, account, cache_file),
     }
 }
 
-fn mastodon_load_toot_dates_from_cache(cache_file: &str) -> Option<BTreeMap<DateTime<Utc>, u64>>{
+fn mastodon_load_toot_dates_from_cache(cache_file: &str) -> Option<BTreeMap<DateTime<Utc>, u64>> {
     let cache = match File::open(cache_file) {
         Ok(mut file) => {
             let mut json = String::new();
             file.read_to_string(&mut json).unwrap();
             serde_json::from_str(&json).unwrap()
-        },
+        }
         Err(_) => return None,
     };
     Some(cache)
 }
 
-fn mastodon_fetch_toot_dates(mastodon: &Mastodon, account: &Account, cache_file: &str) -> BTreeMap<DateTime<Utc>, u64> {
+fn mastodon_fetch_toot_dates(
+    mastodon: &Mastodon,
+    account: &Account,
+    cache_file: &str,
+) -> BTreeMap<DateTime<Utc>, u64> {
     let mut max_id = None;
     let mut dates = BTreeMap::new();
     loop {
-        let statuses = mastodon.statuses(account.id, false, false, None, max_id).unwrap();
+        let statuses = mastodon
+            .statuses(account.id, false, false, None, max_id)
+            .unwrap();
         if statuses.len() == 0 {
             break;
         }
@@ -436,7 +447,11 @@ UNLISTED 🔓 ✅ Tagged people
     #[test]
     fn short_version_on_twitter() {
         let mut status = get_mastodon_status();
-        let long_toot = "test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test";
+        let long_toot = "test test test test test test test test test test test test test
+            test test test test test test test test test test test test test
+            test test test test test test test test test test test test test
+            test test test test test test test test test test test test test
+            test test test test";
         status.content = long_toot.to_string();
 
         let mut tweet = get_twitter_status();
@@ -454,7 +469,11 @@ UNLISTED 🔓 ✅ Tagged people
     #[test]
     fn over_long_status_on_both() {
         let mut status = get_mastodon_status();
-        let long_toot = "test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test";
+        let long_toot = "test test test test test test test test test test test test test
+            test test test test test test test test test test test test test
+            test test test test test test test test test test test test test
+            test test test test test test test test test test test test test
+            test test test test";
         status.content = long_toot.to_string();
 
         let mut tweet = get_twitter_status();
