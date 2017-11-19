@@ -92,7 +92,7 @@ fn main() {
     }
 
     // Delete old mastodon statuses if that option is enabled.
-    if mastodon_statuses.is_empty() || config.mastodon.delete_older_statuses == false {
+    if mastodon_statuses.is_empty() || !config.mastodon.delete_older_statuses {
         return;
     }
 
@@ -136,8 +136,8 @@ struct StatusUpdates {
 }
 
 fn determine_posts(
-    mastodon_statuses: &Vec<Status>,
-    twitter_statuses: &Vec<Tweet>,
+    mastodon_statuses: &[Status],
+    twitter_statuses: &[Tweet],
 ) -> StatusUpdates {
     let mut updates = StatusUpdates {
         tweets: Vec::new(),
@@ -146,10 +146,10 @@ fn determine_posts(
     let mut tweets = Vec::new();
     for tweet in twitter_statuses {
         // Replace those ugly t.co URLs in the tweet text.
-        tweets.push(tweet_unshorten_decode(&tweet));
+        tweets.push(tweet_unshorten_decode(tweet));
     }
 
-    let compare_toots = prepare_compare_toots(&mastodon_statuses);
+    let compare_toots = prepare_compare_toots(mastodon_statuses);
 
     'tweets: for tweet in &tweets {
         for toot in &compare_toots {
@@ -165,7 +165,7 @@ fn determine_posts(
 
     'toots: for toot in mastodon_statuses {
         // Shorten and prepare the toots to be ready for posting on Twitter.
-        let toot_text = mastodon_toot_get_text(&toot);
+        let toot_text = mastodon_toot_get_text(toot);
         let shortened_toot = tweet_shorten(&toot_text, &toot.url);
         for tweet in &tweets {
             // If the toot already exists we can stop here and know that we are
@@ -182,11 +182,11 @@ fn determine_posts(
 
 // Prepare a list of variations of Mastodon toots that could all be synced
 // already.
-fn prepare_compare_toots(mastodon_statuses: &Vec<Status>) -> Vec<String> {
+fn prepare_compare_toots(mastodon_statuses: &[Status]) -> Vec<String> {
     let mut toots = Vec::new();
     for toot in mastodon_statuses {
         // Prepare the toots to be comparable with tweets.
-        let toot_text = mastodon_toot_get_text(&toot);
+        let toot_text = mastodon_toot_get_text(toot);
         // Mastodon allows up to 500 characters, so we might need to shorten the
         // toot. Also add the shortened version of the toot for comparison.
         let shortened_toot = tweet_shorten(&toot_text, &toot.url);
@@ -219,7 +219,7 @@ fn tweet_unshorten_decode(tweet: &Tweet) -> String {
 }
 
 fn tweet_shorten(text: &str, toot_url: &str) -> String {
-    let (mut char_count, _) = character_count(&text, 23, 23);
+    let (mut char_count, _) = character_count(text, 23, 23);
     let re = Regex::new(r"[^\s]+$").unwrap();
     let mut shortened = text.trim().to_string();
     let mut with_link = shortened.clone();
@@ -230,7 +230,7 @@ fn tweet_shorten(text: &str, toot_url: &str) -> String {
         // Remove the last word.
         shortened = re.replace_all(&shortened, "").trim().to_string();
         // Add a link to the toot that has the full text.
-        with_link = shortened.clone() + "… " + &toot_url;
+        with_link = shortened.clone() + "… " + toot_url;
         let (new_count, _) = character_count(&with_link, 23, 23);
         char_count = new_count;
     }
@@ -317,9 +317,7 @@ fn mastodon_register() -> Mastodon {
     println!("Click this link to authorize on Mastodon: {}", url);
 
     let code = console_input("Paste the returned authorization code");
-    let mastodon = registration.create_access_token(code.to_string()).unwrap();
-
-    mastodon
+    registration.create_access_token(code.to_string()).unwrap()
 }
 
 fn config_load(mut file: File) -> Config {
@@ -382,18 +380,14 @@ fn twitter_register() -> TwitterConfig {
         egg_mode::Token::Access {
             access: ref access_token,
             ..
-        } => {
-            let twitter_config = TwitterConfig {
-                consumer_key: consumer_key,
-                consumer_secret: consumer_secret,
-                access_token: access_token.key.to_string(),
-                access_token_secret: access_token.secret.to_string(),
-                user_id: user_id,
-                user_name: screen_name,
-            };
-
-            return twitter_config;
-        }
+        } => TwitterConfig {
+            consumer_key: consumer_key,
+            consumer_secret: consumer_secret,
+            access_token: access_token.key.to_string(),
+            access_token_secret: access_token.secret.to_string(),
+            user_id: user_id,
+            user_name: screen_name,
+        },
         _ => unreachable!(),
     }
 }
@@ -408,8 +402,6 @@ fn console_input(prompt: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    extern crate chrono;
-
     use super::*;
     use egg_mode::tweet::{TweetEntities, TweetSource};
 
