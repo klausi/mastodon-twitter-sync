@@ -29,26 +29,42 @@ use std::io::prelude::*;
 use tokio_core::reactor::Core;
 
 fn main() {
-    let mastodon = match File::open("mastodon.toml") {
-        Ok(f) => mastodon_load_from_config(f),
-        Err(_) => mastodon_register(),
+    let config = match File::open("mastodon-twitter-sync.toml") {
+        Ok(f) => config_load(f),
+        Err(_) => {
+            let mastodon = mastodon_register();
+            let twitter_config = twitter_register();
+            let config = Config {
+                mastodon: MastodonConfig {
+                    app: (*mastodon).clone(),
+                    // Do not delete older status per default, users should
+                    // enable this explicitly.
+                    delete_older_statuses: false,
+                },
+                twitter: twitter_config,
+            };
+
+            // Save config for using on the next run.
+            let toml = toml::to_string(&config).unwrap();
+            let mut file = File::create("mastodon-twitter-snyc.toml").unwrap();
+            file.write_all(toml.as_bytes()).unwrap();
+
+            config
+        }
     };
+
+    let mastodon = Mastodon::from_data(config.mastodon.app);
 
     let account = mastodon.verify().unwrap();
     let mastodon_statuses = mastodon
         .statuses(account.id, false, true, None, None)
         .unwrap();
 
-    let twitter_config = match File::open("twitter.toml") {
-        Ok(f) => twitter_load_from_config(f),
-        Err(_) => twitter_register(),
-    };
-
     let con_token =
-        egg_mode::KeyPair::new(twitter_config.consumer_key, twitter_config.consumer_secret);
+        egg_mode::KeyPair::new(config.twitter.consumer_key, config.twitter.consumer_secret);
     let access_token = egg_mode::KeyPair::new(
-        twitter_config.access_token,
-        twitter_config.access_token_secret,
+        config.twitter.access_token,
+        config.twitter.access_token_secret,
     );
     let token = egg_mode::Token::Access {
         consumer: con_token,
@@ -58,7 +74,7 @@ fn main() {
     let mut core = Core::new().unwrap();
     let handle = core.handle();
     let mut timeline =
-        egg_mode::tweet::user_timeline(twitter_config.user_id, false, true, &token, &handle)
+        egg_mode::tweet::user_timeline(config.twitter.user_id, false, true, &token, &handle)
             .with_page_size(50);
 
     let tweets = core.run(timeline.start()).unwrap();
@@ -75,7 +91,8 @@ fn main() {
             .unwrap();
     }
 
-    if mastodon_statuses.is_empty() {
+    // Delete old mastodon statuses if that option is enabled.
+    if mastodon_statuses.is_empty() || config.mastodon.delete_older_statuses == false {
         return;
     }
 
@@ -267,7 +284,7 @@ fn mastodon_fetch_toot_dates(
         let statuses = mastodon
             .statuses(account.id, false, false, None, max_id)
             .unwrap();
-        if statuses.len() == 0 {
+        if statuses.is_empty() {
             break;
         }
         max_id = Some(statuses.last().unwrap().id);
@@ -295,25 +312,32 @@ fn mastodon_register() -> Mastodon {
         "Provide the URL of your Mastodon instance, for example https://mastodon.social ",
     );
     let mut registration = Registration::new(instance);
-    registration.register(app).unwrap();;
+    registration.register(app).unwrap();
     let url = registration.authorise().unwrap();
     println!("Click this link to authorize on Mastodon: {}", url);
 
     let code = console_input("Paste the returned authorization code");
     let mastodon = registration.create_access_token(code.to_string()).unwrap();
 
-    // Save app data for using on the next run.
-    let toml = toml::to_string(&*mastodon).unwrap();
-    let mut file = File::create("mastodon.toml").unwrap();
-    file.write_all(toml.as_bytes()).unwrap();
     mastodon
 }
 
-fn mastodon_load_from_config(mut file: File) -> Mastodon {
+fn config_load(mut file: File) -> Config {
     let mut config = String::new();
     file.read_to_string(&mut config).unwrap();
-    let data: Data = toml::from_str(&config).unwrap();
-    Mastodon::from_data(data)
+    toml::from_str(&config).unwrap()
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Config {
+    mastodon: MastodonConfig,
+    twitter: TwitterConfig,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct MastodonConfig {
+    app: Data,
+    delete_older_statuses: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -367,21 +391,11 @@ fn twitter_register() -> TwitterConfig {
                 user_id: user_id,
                 user_name: screen_name,
             };
-            // Save app data for using on the next run.
-            let toml = toml::to_string(&twitter_config).unwrap();
-            let mut file = File::create("twitter.toml").unwrap();
-            file.write_all(toml.as_bytes()).unwrap();
 
             return twitter_config;
         }
         _ => unreachable!(),
     }
-}
-
-fn twitter_load_from_config(mut file: File) -> TwitterConfig {
-    let mut config = String::new();
-    file.read_to_string(&mut config).unwrap();
-    toml::from_str(&config).unwrap()
 }
 
 fn console_input(prompt: &str) -> String {
