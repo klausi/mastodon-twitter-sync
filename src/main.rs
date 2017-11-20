@@ -135,10 +135,7 @@ struct StatusUpdates {
     toots: Vec<String>,
 }
 
-fn determine_posts(
-    mastodon_statuses: &[Status],
-    twitter_statuses: &[Tweet],
-) -> StatusUpdates {
+fn determine_posts(mastodon_statuses: &[Status], twitter_statuses: &[Tweet]) -> StatusUpdates {
     let mut updates = StatusUpdates {
         tweets: Vec::new(),
         toots: Vec::new(),
