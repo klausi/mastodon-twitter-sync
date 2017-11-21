@@ -92,38 +92,8 @@ fn main() {
     }
 
     // Delete old mastodon statuses if that option is enabled.
-    if mastodon_statuses.is_empty() || !config.mastodon.delete_older_statuses {
-        return;
-    }
-
-    let cache_file = "mastodon_cache.json";
-    let dates = mastodon_load_toot_dates(&mastodon, &account, cache_file);
-    let mut remove_dates = Vec::new();
-    let three_months_ago = Utc::now() - Duration::days(90);
-    for (date, toot_id) in dates.range(..three_months_ago) {
-        println!("Deleting toot {} from {}", toot_id, date);
-        remove_dates.push(date);
-        // The status could have been deleted already by the user, ignore API
-        // errors in that case.
-        if let Err(error) = mastodon.delete_status(*toot_id) {
-            match error {
-                MammutError::Api(_) => {}
-                _ => Err(error).unwrap(),
-            }
-        }
-    }
-
-    let mut new_dates = dates.clone();
-    for remove_date in remove_dates {
-        new_dates.remove(remove_date);
-    }
-
-    if new_dates.is_empty() {
-        remove_file(cache_file).unwrap();
-    } else {
-        let json = serde_json::to_string(&new_dates).unwrap();
-        let mut file = File::create(cache_file).unwrap();
-        file.write_all(json.as_bytes()).unwrap();
+    if config.mastodon.delete_older_statuses {
+        mastodon_delete_older_statuses(mastodon, account);
     }
 }
 
@@ -245,6 +215,44 @@ fn mastodon_toot_get_text(toot: &Status) -> String {
     replaced = replaced.replace("</p><p>", "\n\n");
     replaced = replaced.replace("<p>", "");
     dissolve::strip_html_tags(&replaced).join("")
+}
+
+// Delete old status of this account that are older than 90 days.
+fn mastodon_delete_older_statuses(mastodon: Mastodon, account: Account) {
+    // In order not to fetch old toots every time keep them in a cache file
+    // keyed by their dates.
+    let cache_file = "mastodon_cache.json";
+    let dates = mastodon_load_toot_dates(&mastodon, &account, cache_file);
+    let mut remove_dates = Vec::new();
+    let three_months_ago = Utc::now() - Duration::days(90);
+    for (date, toot_id) in dates.range(..three_months_ago) {
+        println!("Deleting toot {} from {}", toot_id, date);
+        remove_dates.push(date);
+        // The status could have been deleted already by the user, ignore API
+        // errors in that case.
+        if let Err(error) = mastodon.delete_status(*toot_id) {
+            match error {
+                MammutError::Api(_) => {}
+                _ => Err(error).unwrap(),
+            }
+        }
+    }
+
+    let mut new_dates = dates.clone();
+    for remove_date in remove_dates {
+        new_dates.remove(remove_date);
+    }
+
+    if new_dates.is_empty() {
+        // If we have deleted all old toots from our cache file we can remove
+        // it. On the next run all toots will be fetched and the cache
+        // recreated.
+        remove_file(cache_file).unwrap();
+    } else {
+        let json = serde_json::to_string(&new_dates).unwrap();
+        let mut file = File::create(cache_file).unwrap();
+        file.write_all(json.as_bytes()).unwrap();
+    }
 }
 
 fn mastodon_load_toot_dates(
