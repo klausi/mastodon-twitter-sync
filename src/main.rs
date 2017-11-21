@@ -95,6 +95,9 @@ fn main() {
     if config.mastodon.delete_older_statuses {
         mastodon_delete_older_statuses(mastodon, account);
     }
+    if config.twitter.delete_older_statuses {
+        twitter_delete_older_statuses(config.twitter.user_id, &token);
+    }
 }
 
 // Represents new status updates that should be posted to Twitter (tweets) and
@@ -217,7 +220,7 @@ fn mastodon_toot_get_text(toot: &Status) -> String {
     dissolve::strip_html_tags(&replaced).join("")
 }
 
-// Delete old status of this account that are older than 90 days.
+// Delete old statuses of this account that are older than 90 days.
 fn mastodon_delete_older_statuses(mastodon: Mastodon, account: Account) {
     // In order not to fetch old toots every time keep them in a cache file
     // keyed by their dates.
@@ -260,13 +263,13 @@ fn mastodon_load_toot_dates(
     account: &Account,
     cache_file: &str,
 ) -> BTreeMap<DateTime<Utc>, u64> {
-    match mastodon_load_toot_dates_from_cache(cache_file) {
+    match load_dates_from_cache(cache_file) {
         Some(dates) => dates,
         None => mastodon_fetch_toot_dates(mastodon, account, cache_file),
     }
 }
 
-fn mastodon_load_toot_dates_from_cache(cache_file: &str) -> Option<BTreeMap<DateTime<Utc>, u64>> {
+fn load_dates_from_cache(cache_file: &str) -> Option<BTreeMap<DateTime<Utc>, u64>> {
     let cache = match File::open(cache_file) {
         Ok(mut file) => {
             let mut json = String::new();
@@ -295,6 +298,73 @@ fn mastodon_fetch_toot_dates(
         max_id = Some(statuses.last().unwrap().id);
         for status in statuses {
             dates.insert(status.created_at, status.id);
+        }
+    }
+
+    let json = serde_json::to_string(&dates).unwrap();
+    let mut file = File::create(cache_file).unwrap();
+    file.write_all(json.as_bytes()).unwrap();
+
+    dates
+}
+
+// Delete old statuses of this account that are older than 90 days.
+fn twitter_delete_older_statuses(user_id: u64, token: &egg_mode::Token) {
+    // In order not to fetch old toots every time keep them in a cache file
+    // keyed by their dates.
+    let cache_file = "twitter_cache.json";
+    let dates = twitter_load_tweet_dates(user_id, token, cache_file);
+    let mut core = Core::new().unwrap();
+    let handle = core.handle();
+    let mut remove_dates = Vec::new();
+    let three_months_ago = Utc::now() - Duration::days(90);
+    for (date, tweet_id) in dates.range(..three_months_ago) {
+        println!("Deleting tweet {} from {}", tweet_id, date);
+        remove_dates.push(date);
+        let deletion = egg_mode::tweet::delete(*tweet_id, token, &handle);
+        core.run(deletion).unwrap();
+    }
+
+    let mut new_dates = dates.clone();
+    for remove_date in remove_dates {
+        new_dates.remove(remove_date);
+    }
+
+    if new_dates.is_empty() {
+        // If we have deleted all old toots from our cache file we can remove
+        // it. On the next run all toots will be fetched and the cache
+        // recreated.
+        remove_file(cache_file).unwrap();
+    } else {
+        let json = serde_json::to_string(&new_dates).unwrap();
+        let mut file = File::create(cache_file).unwrap();
+        file.write_all(json.as_bytes()).unwrap();
+    }
+}
+
+fn twitter_load_tweet_dates(user_id: u64, token: &egg_mode::Token, cache_file: &str) -> BTreeMap<DateTime<Utc>, u64> {
+    match load_dates_from_cache(cache_file) {
+        Some(dates) => dates,
+        None => twitter_fetch_tweet_dates(user_id, token, cache_file),
+    }
+}
+
+fn twitter_fetch_tweet_dates(user_id: u64, token: &egg_mode::Token, cache_file: &str) -> BTreeMap<DateTime<Utc>, u64> {
+    let mut core = Core::new().unwrap();
+    let handle = core.handle();
+    // Try to fetch as many tweets as possible at once, Twitter API docs say
+    // that is 200.
+    let mut timeline =
+        egg_mode::tweet::user_timeline(user_id, true, true, &token, &handle)
+            .with_page_size(200);
+    let mut dates = BTreeMap::new();
+    loop {
+        let tweets = core.run(timeline.older(None)).unwrap();
+        if tweets.is_empty() {
+            break;
+        }
+        for tweet in tweets {
+            dates.insert(tweet.created_at, tweet.id);
         }
     }
 
@@ -351,6 +421,12 @@ struct TwitterConfig {
     access_token_secret: String,
     user_id: u64,
     user_name: String,
+    #[serde(default = "twitter_config_delete_default")]
+    delete_older_statuses: bool,
+}
+
+fn twitter_config_delete_default() -> bool {
+    false
 }
 
 fn twitter_register() -> TwitterConfig {
@@ -392,6 +468,7 @@ fn twitter_register() -> TwitterConfig {
             access_token_secret: access_token.secret.to_string(),
             user_id: user_id,
             user_name: screen_name,
+            delete_older_statuses: false,
         },
         _ => unreachable!(),
     }
