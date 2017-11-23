@@ -113,59 +113,70 @@ fn determine_posts(mastodon_statuses: &[Status], twitter_statuses: &[Tweet]) -> 
         tweets: Vec::new(),
         toots: Vec::new(),
     };
-    let mut tweets = Vec::new();
-    for tweet in twitter_statuses {
-        // Replace those ugly t.co URLs in the tweet text.
-        tweets.push(tweet_unshorten_decode(tweet));
-    }
-
-    let compare_toots = prepare_compare_toots(mastodon_statuses);
-
-    'tweets: for tweet in &tweets {
-        for toot in &compare_toots {
+    'tweets: for tweet in twitter_statuses {
+        for toot in mastodon_statuses {
             // If the tweet already exists we can stop here and know that we are
             // synced.
-            if toot == tweet {
+            if toot_and_tweet_are_equal(toot, tweet) {
                 break 'tweets;
             }
         }
         // The tweet is not on Mastodon yet, let's post it.
-        updates.toots.push(tweet.to_string());
+        updates.toots.push(tweet_unshorten_decode(tweet));
     }
 
     'toots: for toot in mastodon_statuses {
-        // Shorten and prepare the toots to be ready for posting on Twitter.
-        let toot_text = mastodon_toot_get_text(toot);
-        let shortened_toot = tweet_shorten(&toot_text, &toot.url);
-        for tweet in &tweets {
+        for tweet in twitter_statuses {
             // If the toot already exists we can stop here and know that we are
             // synced.
-            if &toot_text == tweet || &shortened_toot == tweet {
+            if toot_and_tweet_are_equal(toot, tweet) {
                 break 'toots;
             }
         }
         // The toot is not on Twitter yet, let's post it.
-        updates.tweets.push(shortened_toot);
+        let post = tweet_shorten(&mastodon_toot_get_text(toot), &toot.url);
+        updates.tweets.push(post);
     }
     updates
 }
 
-// Prepare a list of variations of Mastodon toots that could all be synced
-// already.
-fn prepare_compare_toots(mastodon_statuses: &[Status]) -> Vec<String> {
-    let mut toots = Vec::new();
-    for toot in mastodon_statuses {
-        // Prepare the toots to be comparable with tweets.
-        let toot_text = mastodon_toot_get_text(toot);
-        // Mastodon allows up to 500 characters, so we might need to shorten the
-        // toot. Also add the shortened version of the toot for comparison.
-        let shortened_toot = tweet_shorten(&toot_text, &toot.url);
-        if toot_text != shortened_toot {
-            toots.push(shortened_toot);
-        }
-        toots.push(toot_text);
+// Returns true if a Mastodon toot and a Twitter tweet are considered equal.
+fn toot_and_tweet_are_equal(toot: &Status, tweet: &Tweet) -> bool {
+    // Strip markup from Mastodon toot.
+    let toot_text = mastodon_toot_get_text(toot);
+    // Replace those ugly t.co URLs in the tweet text.
+    let tweet_text = tweet_unshorten_decode(tweet);
+    if toot_text == tweet_text {
+        return true;
     }
-    toots
+    // Mastodon allows up to 500 characters, so we might need to shorten the
+    // toot.
+    let shortened_toot = tweet_shorten(&toot_text, &toot.url);
+    if shortened_toot == tweet_text {
+        return true;
+    }
+    // Support for old posts that started with "RT @username:", we consider them
+    // equal to "RT username:".
+    if tweet_text.starts_with("RT @") {
+        let old_rt = tweet_text.replacen("RT @", "RT ", 1);
+        if old_rt == toot_text || old_rt == shortened_toot {
+            return true;
+        }
+    }
+    if toot_text.starts_with("RT @") {
+        let old_rt = toot_text.replacen("RT @", "RT ", 1);
+        if old_rt == tweet_text {
+            return true;
+        }
+    }
+    if shortened_toot.starts_with("RT @") {
+        let old_rt = shortened_toot.replacen("RT @", "RT ", 1);
+        if old_rt == tweet_text {
+            return true;
+        }
+    }
+
+    false
 }
 
 // Replace t.co URLs and HTML entity decode &amp;
@@ -174,7 +185,7 @@ fn tweet_unshorten_decode(tweet: &Tweet) -> String {
         None => (tweet.text.clone(), &tweet.entities.urls),
         Some(ref retweet) => (
             format!(
-                "RT @{}: {}",
+                "RT {}: {}",
                 retweet.clone().user.unwrap().screen_name,
                 retweet.text
             ),
@@ -211,7 +222,7 @@ fn tweet_shorten(text: &str, toot_url: &str) -> String {
 fn mastodon_toot_get_text(toot: &Status) -> String {
     let mut replaced = match toot.reblog {
         None => toot.content.clone(),
-        Some(ref reblog) => format!("RT @{}: {}", reblog.account.username, reblog.content),
+        Some(ref reblog) => format!("RT {}: {}", reblog.account.username, reblog.content),
     };
     replaced = replaced.replace("<br />", "\n");
     replaced = replaced.replace("<br>", "\n");
@@ -342,21 +353,28 @@ fn twitter_delete_older_statuses(user_id: u64, token: &egg_mode::Token) {
     }
 }
 
-fn twitter_load_tweet_dates(user_id: u64, token: &egg_mode::Token, cache_file: &str) -> BTreeMap<DateTime<Utc>, u64> {
+fn twitter_load_tweet_dates(
+    user_id: u64,
+    token: &egg_mode::Token,
+    cache_file: &str,
+) -> BTreeMap<DateTime<Utc>, u64> {
     match load_dates_from_cache(cache_file) {
         Some(dates) => dates,
         None => twitter_fetch_tweet_dates(user_id, token, cache_file),
     }
 }
 
-fn twitter_fetch_tweet_dates(user_id: u64, token: &egg_mode::Token, cache_file: &str) -> BTreeMap<DateTime<Utc>, u64> {
+fn twitter_fetch_tweet_dates(
+    user_id: u64,
+    token: &egg_mode::Token,
+    cache_file: &str,
+) -> BTreeMap<DateTime<Utc>, u64> {
     let mut core = Core::new().unwrap();
     let handle = core.handle();
     // Try to fetch as many tweets as possible at once, Twitter API docs say
     // that is 200.
     let mut timeline =
-        egg_mode::tweet::user_timeline(user_id, true, true, &token, &handle)
-            .with_page_size(200);
+        egg_mode::tweet::user_timeline(user_id, true, true, &token, &handle).with_page_size(200);
     let mut dates = BTreeMap::new();
     loop {
         let tweets = core.run(timeline.older(None)).unwrap();
@@ -421,8 +439,7 @@ struct TwitterConfig {
     access_token_secret: String,
     user_id: u64,
     user_name: String,
-    #[serde(default = "twitter_config_delete_default")]
-    delete_older_statuses: bool,
+    #[serde(default = "twitter_config_delete_default")] delete_older_statuses: bool,
 }
 
 fn twitter_config_delete_default() -> bool {
@@ -594,8 +611,8 @@ UNLISTED 🔓 ✅ Tagged people
         assert_eq!(posts.toots[0], "You & me!");
     }
 
-    // Test that a boost on Mastodon is prefixed with "RT @..." when posted to
-    // Twitter.
+    // Test that a boost on Mastodon is prefixed with "RT username:" when posted
+    // to Twitter.
     #[test]
     fn mastodon_boost() {
         let mut reblog = get_mastodon_status();
@@ -605,7 +622,27 @@ UNLISTED 🔓 ✅ Tagged people
         status.reblogged = Some(true);
 
         let posts = determine_posts(&vec![status], &Vec::new());
-        assert_eq!(posts.tweets[0], "RT @example: Some example toooot!");
+        assert_eq!(posts.tweets[0], "RT example: Some example toooot!");
+    }
+
+    // Test that the old "RT @username" prefix is considered equal to "RT
+    // username:".
+    #[test]
+    fn old_rt_prefix() {
+        let mut reblog = get_mastodon_status();
+        reblog.content = "<p>Some example toooot!</p>".to_string();
+        let mut status = get_mastodon_status();
+        status.reblog = Some(Box::new(reblog));
+        status.reblogged = Some(true);
+
+        let mut tweet = get_twitter_status();
+        tweet.text = "RT @example: Some example toooot!".to_string();
+
+        let tweets = vec![tweet];
+        let statuses = vec![status];
+        let posts = determine_posts(&statuses, &tweets);
+        assert!(posts.toots.is_empty());
+        assert!(posts.tweets.is_empty());
     }
 
     fn get_mastodon_status() -> Status {
