@@ -93,7 +93,7 @@ fn main() {
 
     // Delete old mastodon statuses if that option is enabled.
     if config.mastodon.delete_older_statuses {
-        mastodon_delete_older_statuses(mastodon, account);
+        mastodon_delete_older_statuses(&mastodon, &account);
     }
     if config.twitter.delete_older_statuses {
         twitter_delete_older_statuses(config.twitter.user_id, &token);
@@ -232,11 +232,11 @@ fn mastodon_toot_get_text(toot: &Status) -> String {
 }
 
 // Delete old statuses of this account that are older than 90 days.
-fn mastodon_delete_older_statuses(mastodon: Mastodon, account: Account) {
+fn mastodon_delete_older_statuses(mastodon: &Mastodon, account: &Account) {
     // In order not to fetch old toots every time keep them in a cache file
     // keyed by their dates.
     let cache_file = "mastodon_cache.json";
-    let dates = mastodon_load_toot_dates(&mastodon, &account, cache_file);
+    let dates = mastodon_load_toot_dates(mastodon, account, cache_file);
     let mut remove_dates = Vec::new();
     let three_months_ago = Utc::now() - Duration::days(90);
     for (date, toot_id) in dates.range(..three_months_ago) {
@@ -374,7 +374,7 @@ fn twitter_fetch_tweet_dates(
     // Try to fetch as many tweets as possible at once, Twitter API docs say
     // that is 200.
     let mut timeline =
-        egg_mode::tweet::user_timeline(user_id, true, true, &token, &handle).with_page_size(200);
+        egg_mode::tweet::user_timeline(user_id, true, true, token, &handle).with_page_size(200);
     let mut dates = BTreeMap::new();
     loop {
         let tweets = core.run(timeline.older(None)).unwrap();
