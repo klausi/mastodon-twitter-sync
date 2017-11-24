@@ -6,8 +6,6 @@ use egg_mode::text::character_count;
 use egg_mode::tweet::Tweet;
 use mammut::entities::status::Status;
 use regex::Regex;
-use std::io::prelude::*;
-use std::fs::File;
 
 // Represents new status updates that should be posted to Twitter (tweets) and
 // Mastodon (toots).
@@ -145,6 +143,8 @@ mod tests {
 
     use super::*;
     use egg_mode::tweet::{TweetEntities, TweetSource};
+    use std::io::prelude::*;
+    use std::fs::File;
 
     #[test]
     fn tweet_shortening() {
