@@ -1,5 +1,4 @@
 extern crate chrono;
-extern crate dissolve;
 extern crate egg_mode;
 extern crate mammut;
 extern crate regex;
@@ -11,22 +10,22 @@ extern crate toml;
 
 use chrono::Duration;
 use chrono::prelude::*;
-use egg_mode::text::character_count;
 use egg_mode::tweet::DraftTweet;
-use egg_mode::tweet::Tweet;
 use mammut::{Data, Mastodon, Registration};
 use mammut::Error as MammutError;
 use mammut::apps::{AppBuilder, Scope};
 use mammut::entities::account::Account;
-use mammut::entities::status::Status;
 use mammut::status_builder::StatusBuilder;
-use regex::Regex;
 use std::collections::BTreeMap;
 use std::io;
 use std::fs::File;
 use std::fs::remove_file;
 use std::io::prelude::*;
 use tokio_core::reactor::Core;
+
+use sync::determine_posts;
+
+mod sync;
 
 fn main() {
     let config = match File::open("mastodon-twitter-sync.toml") {
@@ -98,137 +97,6 @@ fn main() {
     if config.twitter.delete_older_statuses {
         twitter_delete_older_statuses(config.twitter.user_id, &token);
     }
-}
-
-// Represents new status updates that should be posted to Twitter (tweets) and
-// Mastodon (toots).
-#[derive(Debug)]
-struct StatusUpdates {
-    tweets: Vec<String>,
-    toots: Vec<String>,
-}
-
-fn determine_posts(mastodon_statuses: &[Status], twitter_statuses: &[Tweet]) -> StatusUpdates {
-    let mut updates = StatusUpdates {
-        tweets: Vec::new(),
-        toots: Vec::new(),
-    };
-    'tweets: for tweet in twitter_statuses {
-        for toot in mastodon_statuses {
-            // If the tweet already exists we can stop here and know that we are
-            // synced.
-            if toot_and_tweet_are_equal(toot, tweet) {
-                break 'tweets;
-            }
-        }
-        // The tweet is not on Mastodon yet, let's post it.
-        updates.toots.push(tweet_unshorten_decode(tweet));
-    }
-
-    'toots: for toot in mastodon_statuses {
-        for tweet in twitter_statuses {
-            // If the toot already exists we can stop here and know that we are
-            // synced.
-            if toot_and_tweet_are_equal(toot, tweet) {
-                break 'toots;
-            }
-        }
-        // The toot is not on Twitter yet, let's post it.
-        let post = tweet_shorten(&mastodon_toot_get_text(toot), &toot.url);
-        updates.tweets.push(post);
-    }
-    updates
-}
-
-// Returns true if a Mastodon toot and a Twitter tweet are considered equal.
-fn toot_and_tweet_are_equal(toot: &Status, tweet: &Tweet) -> bool {
-    // Strip markup from Mastodon toot.
-    let toot_text = mastodon_toot_get_text(toot);
-    // Replace those ugly t.co URLs in the tweet text.
-    let tweet_text = tweet_unshorten_decode(tweet);
-    if toot_text == tweet_text {
-        return true;
-    }
-    // Mastodon allows up to 500 characters, so we might need to shorten the
-    // toot.
-    let shortened_toot = tweet_shorten(&toot_text, &toot.url);
-    if shortened_toot == tweet_text {
-        return true;
-    }
-    // Support for old posts that started with "RT @username:", we consider them
-    // equal to "RT username:".
-    if tweet_text.starts_with("RT @") {
-        let old_rt = tweet_text.replacen("RT @", "RT ", 1);
-        if old_rt == toot_text || old_rt == shortened_toot {
-            return true;
-        }
-    }
-    if toot_text.starts_with("RT @") {
-        let old_rt = toot_text.replacen("RT @", "RT ", 1);
-        if old_rt == tweet_text {
-            return true;
-        }
-    }
-    if shortened_toot.starts_with("RT @") {
-        let old_rt = shortened_toot.replacen("RT @", "RT ", 1);
-        if old_rt == tweet_text {
-            return true;
-        }
-    }
-
-    false
-}
-
-// Replace t.co URLs and HTML entity decode &amp;
-fn tweet_unshorten_decode(tweet: &Tweet) -> String {
-    let (mut tweet_text, urls) = match tweet.retweeted_status {
-        None => (tweet.text.clone(), &tweet.entities.urls),
-        Some(ref retweet) => (
-            format!(
-                "RT {}: {}",
-                retweet.clone().user.unwrap().screen_name,
-                retweet.text
-            ),
-            &retweet.entities.urls,
-        ),
-    };
-    for url in urls {
-        tweet_text = tweet_text.replace(&url.url, &url.expanded_url);
-    }
-    // Twitterposts have HTML entities such as &amp;, we need to decode them.
-    dissolve::strip_html_tags(&tweet_text).join("")
-}
-
-fn tweet_shorten(text: &str, toot_url: &str) -> String {
-    let (mut char_count, _) = character_count(text, 23, 23);
-    let re = Regex::new(r"[^\s]+$").unwrap();
-    let mut shortened = text.trim().to_string();
-    let mut with_link = shortened.clone();
-
-    // Twitter should allow 280 characters, but their counting is unpredictable.
-    // Use 40 characters less and hope it works ¯\_(ツ)_/¯
-    while char_count > 240 {
-        // Remove the last word.
-        shortened = re.replace_all(&shortened, "").trim().to_string();
-        // Add a link to the toot that has the full text.
-        with_link = shortened.clone() + "… " + toot_url;
-        let (new_count, _) = character_count(&with_link, 23, 23);
-        char_count = new_count;
-    }
-    with_link.to_string()
-}
-
-// Prefix boost toots with the author and strip HTML tags.
-fn mastodon_toot_get_text(toot: &Status) -> String {
-    let mut replaced = match toot.reblog {
-        None => toot.content.clone(),
-        Some(ref reblog) => format!("RT {}: {}", reblog.account.username, reblog.content),
-    };
-    replaced = replaced.replace("<br />", "\n");
-    replaced = replaced.replace("<br>", "\n");
-    replaced = replaced.replace("</p><p>", "\n\n");
-    replaced = replaced.replace("<p>", "");
-    dissolve::strip_html_tags(&replaced).join("")
 }
 
 // Delete old statuses of this account that are older than 90 days.
@@ -497,6 +365,3 @@ fn console_input(prompt: &str) -> String {
     let _ = io::stdin().read_line(&mut line).unwrap();
     line.trim().to_string()
 }
-
-
-mod tests;
