@@ -2,7 +2,6 @@ extern crate chrono;
 extern crate egg_mode;
 extern crate mammut;
 extern crate regex;
-extern crate serde_json;
 extern crate tokio_core;
 extern crate toml;
 
@@ -14,10 +13,10 @@ use mammut::Mastodon;
 use mammut::Error as MammutError;
 use mammut::entities::account::Account;
 use std::collections::BTreeMap;
-use std::fs::File;
 use std::fs::remove_file;
-use std::io::prelude::*;
 use tokio_core::reactor::Core;
+
+use config::*;
 
 // Delete old statuses of this account that are older than 90 days.
 pub fn mastodon_delete_older_statuses(mastodon: &Mastodon, account: &Account) {
@@ -51,9 +50,7 @@ pub fn mastodon_delete_older_statuses(mastodon: &Mastodon, account: &Account) {
         // recreated.
         remove_file(cache_file).unwrap();
     } else {
-        let json = serde_json::to_string(&new_dates).unwrap();
-        let mut file = File::create(cache_file).unwrap();
-        file.write_all(json.as_bytes()).unwrap();
+        save_dates_to_cache(cache_file, &new_dates);
     }
 }
 
@@ -66,18 +63,6 @@ fn mastodon_load_toot_dates(
         Some(dates) => dates,
         None => mastodon_fetch_toot_dates(mastodon, account, cache_file),
     }
-}
-
-fn load_dates_from_cache(cache_file: &str) -> Option<BTreeMap<DateTime<Utc>, u64>> {
-    let cache = match File::open(cache_file) {
-        Ok(mut file) => {
-            let mut json = String::new();
-            file.read_to_string(&mut json).unwrap();
-            serde_json::from_str(&json).unwrap()
-        }
-        Err(_) => return None,
-    };
-    Some(cache)
 }
 
 fn mastodon_fetch_toot_dates(
@@ -100,9 +85,7 @@ fn mastodon_fetch_toot_dates(
         }
     }
 
-    let json = serde_json::to_string(&dates).unwrap();
-    let mut file = File::create(cache_file).unwrap();
-    file.write_all(json.as_bytes()).unwrap();
+    save_dates_to_cache(cache_file, &dates);
 
     dates
 }
@@ -150,9 +133,7 @@ pub fn twitter_delete_older_statuses(user_id: u64, token: &egg_mode::Token) {
         // recreated.
         remove_file(cache_file).unwrap();
     } else {
-        let json = serde_json::to_string(&new_dates).unwrap();
-        let mut file = File::create(cache_file).unwrap();
-        file.write_all(json.as_bytes()).unwrap();
+        save_dates_to_cache(cache_file, &new_dates);
     }
 }
 
@@ -189,9 +170,7 @@ fn twitter_fetch_tweet_dates(
         }
     }
 
-    let json = serde_json::to_string(&dates).unwrap();
-    let mut file = File::create(cache_file).unwrap();
-    file.write_all(json.as_bytes()).unwrap();
+    save_dates_to_cache(cache_file, &dates);
 
     dates
 }

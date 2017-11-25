@@ -2,7 +2,6 @@ extern crate chrono;
 extern crate egg_mode;
 extern crate mammut;
 extern crate regex;
-extern crate serde_json;
 extern crate tokio_core;
 extern crate toml;
 
@@ -11,9 +10,9 @@ use chrono::prelude::*;
 use mammut::Mastodon;
 use mammut::Error as MammutError;
 use std::collections::BTreeMap;
-use std::fs::File;
 use std::fs::remove_file;
-use std::io::prelude::*;
+
+use config::*;
 
 // Delete old favourites of this account that are older than 90 days.
 pub fn mastodon_delete_older_favs(mastodon: &Mastodon) {
@@ -47,9 +46,7 @@ pub fn mastodon_delete_older_favs(mastodon: &Mastodon) {
         // recreated.
         remove_file(cache_file).unwrap();
     } else {
-        let json = serde_json::to_string(&new_dates).unwrap();
-        let mut file = File::create(cache_file).unwrap();
-        file.write_all(json.as_bytes()).unwrap();
+        save_dates_to_cache(cache_file, &new_dates);
     }
 }
 
@@ -58,18 +55,6 @@ fn mastodon_load_fav_dates(mastodon: &Mastodon, cache_file: &str) -> BTreeMap<Da
         Some(dates) => dates,
         None => mastodon_fetch_fav_dates(mastodon, cache_file),
     }
-}
-
-fn load_dates_from_cache(cache_file: &str) -> Option<BTreeMap<DateTime<Utc>, u64>> {
-    let cache = match File::open(cache_file) {
-        Ok(mut file) => {
-            let mut json = String::new();
-            file.read_to_string(&mut json).unwrap();
-            serde_json::from_str(&json).unwrap()
-        }
-        Err(_) => return None,
-    };
-    Some(cache)
 }
 
 fn mastodon_fetch_fav_dates(mastodon: &Mastodon, cache_file: &str) -> BTreeMap<DateTime<Utc>, u64> {
@@ -85,9 +70,7 @@ fn mastodon_fetch_fav_dates(mastodon: &Mastodon, cache_file: &str) -> BTreeMap<D
         }
     }
 
-    let json = serde_json::to_string(&dates).unwrap();
-    let mut file = File::create(cache_file).unwrap();
-    file.write_all(json.as_bytes()).unwrap();
+    save_dates_to_cache(cache_file, &dates);
 
     dates
 }

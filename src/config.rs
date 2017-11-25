@@ -1,7 +1,11 @@
+extern crate chrono;
 extern crate mammut;
+extern crate serde_json;
 extern crate toml;
 
+use chrono::prelude::*;
 use mammut::Data;
+use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::prelude::*;
 
@@ -37,4 +41,22 @@ pub struct TwitterConfig {
 
 fn config_false_default() -> bool {
     false
+}
+
+pub fn load_dates_from_cache(cache_file: &str) -> Option<BTreeMap<DateTime<Utc>, u64>> {
+    let cache = match File::open(cache_file) {
+        Ok(mut file) => {
+            let mut json = String::new();
+            file.read_to_string(&mut json).unwrap();
+            serde_json::from_str(&json).unwrap()
+        }
+        Err(_) => return None,
+    };
+    Some(cache)
+}
+
+pub fn save_dates_to_cache(cache_file: &str, dates: &BTreeMap<DateTime<Utc>, u64>) {
+    let json = serde_json::to_string(&dates).unwrap();
+    let mut file = File::create(cache_file).unwrap();
+    file.write_all(json.as_bytes()).unwrap();
 }
