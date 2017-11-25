@@ -8,6 +8,8 @@ extern crate toml;
 
 use chrono::Duration;
 use chrono::prelude::*;
+use egg_mode::error::TwitterErrors;
+use egg_mode::error::Error as EggModeError;
 use mammut::Mastodon;
 use mammut::Error as MammutError;
 use mammut::entities::account::Account;
@@ -119,7 +121,22 @@ pub fn twitter_delete_older_statuses(user_id: u64, token: &egg_mode::Token) {
         println!("Deleting tweet {} from {}", tweet_id, date);
         remove_dates.push(date);
         let deletion = egg_mode::tweet::delete(*tweet_id, token, &handle);
-        core.run(deletion).unwrap();
+        let delete_result = core.run(deletion);
+        match delete_result {
+            // The status could have been deleted already by the user, ignore API
+            // errors in that case.
+            Err(EggModeError::TwitterError(TwitterErrors { errors: e })) => {
+                // Error 144 is "No status found with that ID".
+                if e.len() != 1 || e[0].code != 144 {
+                    println!("{:#?}", e);
+                    panic!("Twitter response error");
+                }
+            }
+            Err(_) => {
+                delete_result.unwrap();
+            }
+            Ok(_) => {}
+        }
     }
 
     let mut new_dates = dates.clone();
@@ -128,8 +145,8 @@ pub fn twitter_delete_older_statuses(user_id: u64, token: &egg_mode::Token) {
     }
 
     if new_dates.is_empty() {
-        // If we have deleted all old toots from our cache file we can remove
-        // it. On the next run all toots will be fetched and the cache
+        // If we have deleted all old tweets from our cache file we can remove
+        // it. On the next run all tweets will be fetched and the cache
         // recreated.
         remove_file(cache_file).unwrap();
     } else {
