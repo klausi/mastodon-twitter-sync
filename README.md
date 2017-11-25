@@ -54,6 +54,8 @@ user_id = 1234567890
 user_name = "example"
 # Delete Twitter status posts that are older than 90 days
 delete_older_statuses = true
+# Delete Twitter likes that are older than 90 days
+delete_older_favs = true
 ```
 
 ## Periodic execution
