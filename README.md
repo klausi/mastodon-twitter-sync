@@ -9,9 +9,9 @@ This tool synchronizes posts from [Mastodon](https://joinmastodon.org/) to [Twit
 * Your status update on Mastodon will be posted automatically to Twitter
 * Your boost on Mastodon will be posted automatically to Twitter with a "RT @username" prefix
 
-## Old status deletion feature
+## Old data deletion feature for better privacy
 
-Optionally a configuration option can be set to delete posts from your Mastodon account that are older than 90 days.
+Optionally configuration options can be set to delete posts/favourites from your Mastodon and Twitter accounts that are older than 90 days.
 
 ## Installation and execution
 
@@ -29,17 +29,22 @@ cargo run --release
 
 All configuration options are created in a `mastodon-twitter-sync.toml` file in the directory where you executed the program.
 
-Enable automatic post deletion after 90 days by setting `delete_older_statuses = true` in the mastodon section. Example:
+Enable automatic status/favourite deletion with config options. Example:
 
 ```toml
 [mastodon]
+# Delete Mastodon status posts that are older than 90 days
 delete_older_statuses = true
+# Delete Mastodon favourites that are older than 90 days
+delete_older_favs = true
+
 [mastodon.app]
 base = "https://mastodon.social"
 client_id = "XXXXXXXXXXX"
 client_secret = "XXXXXXXXXXX"
 redirect = "urn:ietf:wg:oauth:2.0:oob"
 token = "XXXXXXXXXXX"
+
 [twitter]
 consumer_key = "XXXXXXXXXXX"
 consumer_secret = "XXXXXXXXXXX"
@@ -47,6 +52,8 @@ access_token = "XXXXXXXXXXX"
 access_token_secret = "XXXXXXXXXXX"
 user_id = 1234567890
 user_name = "example"
+# Delete Twitter status posts that are older than 90 days
+delete_older_statuses = true
 ```
 
 ## Periodic execution
