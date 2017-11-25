@@ -106,4 +106,7 @@ fn main() {
     if config.mastodon.delete_older_favs {
         mastodon_delete_older_favs(&mastodon);
     }
+    if config.twitter.delete_older_favs {
+        twitter_delete_older_favs(config.twitter.user_id, &token);
+    }
 }

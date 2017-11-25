@@ -37,6 +37,7 @@ pub struct TwitterConfig {
     pub user_id: u64,
     pub user_name: String,
     #[serde(default = "config_false_default")] pub delete_older_statuses: bool,
+    #[serde(default = "config_false_default")] pub delete_older_favs: bool,
 }
 
 fn config_false_default() -> bool {

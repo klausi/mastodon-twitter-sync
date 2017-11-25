@@ -69,6 +69,7 @@ pub fn twitter_register() -> TwitterConfig {
             user_id: user_id,
             user_name: screen_name,
             delete_older_statuses: false,
+            delete_older_favs: false,
         },
         _ => unreachable!(),
     }
