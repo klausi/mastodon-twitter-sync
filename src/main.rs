@@ -22,11 +22,13 @@ use registration::twitter_register;
 use sync::determine_posts;
 use delete_statuses::mastodon_delete_older_statuses;
 use delete_statuses::twitter_delete_older_statuses;
+use delete_favs::*;
 
 mod config;
 mod registration;
 mod sync;
 mod delete_statuses;
+mod delete_favs;
 
 fn main() {
     let config = match File::open("mastodon-twitter-sync.toml") {
@@ -40,13 +42,14 @@ fn main() {
                     // Do not delete older status per default, users should
                     // enable this explicitly.
                     delete_older_statuses: false,
+                    delete_older_favs: false,
                 },
                 twitter: twitter_config,
             };
 
             // Save config for using on the next run.
             let toml = toml::to_string(&config).unwrap();
-            let mut file = File::create("mastodon-twitter-snyc.toml").unwrap();
+            let mut file = File::create("mastodon-twitter-sync.toml").unwrap();
             file.write_all(toml.as_bytes()).unwrap();
 
             config
@@ -97,5 +100,10 @@ fn main() {
     }
     if config.twitter.delete_older_statuses {
         twitter_delete_older_statuses(config.twitter.user_id, &token);
+    }
+
+    // Delete old mastodon favourites if that option is enabled.
+    if config.mastodon.delete_older_favs {
+        mastodon_delete_older_favs(&mastodon);
     }
 }

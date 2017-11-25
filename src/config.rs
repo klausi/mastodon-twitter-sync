@@ -21,6 +21,7 @@ pub struct Config {
 pub struct MastodonConfig {
     pub app: Data,
     pub delete_older_statuses: bool,
+    #[serde(default = "config_false_default")] pub delete_older_favs: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -31,9 +32,9 @@ pub struct TwitterConfig {
     pub access_token_secret: String,
     pub user_id: u64,
     pub user_name: String,
-    #[serde(default = "twitter_config_delete_default")] pub delete_older_statuses: bool,
+    #[serde(default = "config_false_default")] pub delete_older_statuses: bool,
 }
 
-fn twitter_config_delete_default() -> bool {
+fn config_false_default() -> bool {
     false
 }
