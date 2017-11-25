@@ -5,9 +5,9 @@ This tool synchronizes posts from [Mastodon](https://joinmastodon.org/) to [Twit
 ## Synchronization Features
 
 * Your status update on Twitter will be posted automatically to Mastodon
-* Your Retweet on Twitter will automatically be posted to Mastodon with a "RT @username" prefix
+* Your Retweet on Twitter will automatically be posted to Mastodon with a "RT username:" prefix
 * Your status update on Mastodon will be posted automatically to Twitter
-* Your boost on Mastodon will be posted automatically to Twitter with a "RT @username" prefix
+* Your boost on Mastodon will be posted automatically to Twitter with a "RT username:" prefix
 
 ## Old data deletion feature for better privacy
 
