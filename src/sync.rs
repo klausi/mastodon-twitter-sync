@@ -53,32 +53,32 @@ fn toot_and_tweet_are_equal(toot: &Status, tweet: &Tweet) -> bool {
     let toot_text = mastodon_toot_get_text(toot);
     // Replace those ugly t.co URLs in the tweet text.
     let tweet_text = tweet_unshorten_decode(tweet);
-    if toot_text == tweet_text {
+    if toot_text.to_lowercase() == tweet_text.to_lowercase() {
         return true;
     }
     // Mastodon allows up to 500 characters, so we might need to shorten the
     // toot.
     let shortened_toot = tweet_shorten(&toot_text, &toot.url);
-    if shortened_toot == tweet_text {
+    if shortened_toot.to_lowercase() == tweet_text.to_lowercase() {
         return true;
     }
     // Support for old posts that started with "RT @username:", we consider them
     // equal to "RT username:".
     if tweet_text.starts_with("RT @") {
         let old_rt = tweet_text.replacen("RT @", "RT ", 1);
-        if old_rt == toot_text || old_rt == shortened_toot {
+        if old_rt.to_lowercase() == toot_text.to_lowercase() || old_rt.to_lowercase() == shortened_toot.to_lowercase() {
             return true;
         }
     }
     if toot_text.starts_with("RT @") {
         let old_rt = toot_text.replacen("RT @", "RT ", 1);
-        if old_rt == tweet_text {
+        if old_rt.to_lowercase() == tweet_text.to_lowercase() {
             return true;
         }
     }
     if shortened_toot.starts_with("RT @") {
         let old_rt = shortened_toot.replacen("RT @", "RT ", 1);
-        if old_rt == tweet_text {
+        if old_rt.to_lowercase() == tweet_text.to_lowercase() {
             return true;
         }
     }
@@ -285,6 +285,25 @@ UNLISTED 🔓 ✅ Tagged people
         let posts = determine_posts(&statuses, &tweets);
         assert!(posts.toots.is_empty());
         assert!(posts.tweets.is_empty());
+    }
+
+    // Test that the tweet/toot comparison is not case sensitive.
+    #[test]
+    fn case_insensitive() {
+        let mut status = get_mastodon_status();
+        status.content = "Casing different @Yes".to_string();
+        let mut tweet = get_twitter_status();
+        tweet.text = "casing Different @yes".to_string();
+        assert!(toot_and_tweet_are_equal(&status, &tweet));
+
+        let long_toot = "Test test test test test test test test test test test test test
+        test test test test test test test test test test test test test
+        test test test test test test test test test test test test test
+        test test test test test test test test test test test test test
+        test test test test";
+        status.content = long_toot.to_string();
+        tweet.text = tweet_shorten(long_toot, &status.url).to_lowercase();
+        assert!(toot_and_tweet_are_equal(&status, &tweet));
     }
 
     fn get_mastodon_status() -> Status {

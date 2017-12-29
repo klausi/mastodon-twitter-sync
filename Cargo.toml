@@ -6,7 +6,7 @@ authors = ["Klaus Purer <klaus.purer@gmail.com>"]
 [dependencies]
 chrono = ">=0.4.0"
 dissolve = ">=0.2.2"
-egg-mode = ">=0.11"
+egg-mode = "0.11"
 mammut = ">=0.9"
 regex = ">=0.2.2"
 serde = ">=1.0"
