@@ -1,6 +1,7 @@
 extern crate chrono;
 extern crate dissolve;
 extern crate egg_mode;
+extern crate egg_mode_text;
 extern crate mammut;
 extern crate regex;
 #[macro_use]
@@ -76,11 +77,11 @@ fn main() {
 
     let mut core = Core::new().unwrap();
     let handle = core.handle();
-    let mut timeline =
+    let timeline =
         egg_mode::tweet::user_timeline(config.twitter.user_id, false, true, &token, &handle)
             .with_page_size(50);
 
-    let tweets = core.run(timeline.start()).unwrap();
+    let (_, tweets) = core.run(timeline.start()).unwrap();
     let posts = determine_posts(&mastodon_statuses, &*tweets);
 
     for toot in posts.toots {
@@ -90,7 +91,7 @@ fn main() {
 
     for tweet in posts.tweets {
         println!("Posting to Twitter: {}", tweet);
-        core.run(DraftTweet::new(&tweet).send(&token, &handle))
+        core.run(DraftTweet::new(tweet).send(&token, &handle))
             .unwrap();
     }
 

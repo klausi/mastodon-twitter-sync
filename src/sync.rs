@@ -2,7 +2,7 @@ extern crate dissolve;
 extern crate serde_json;
 
 use chrono::prelude::*;
-use egg_mode::text::character_count;
+use egg_mode_text::character_count;
 use egg_mode::tweet::Tweet;
 use mammut::entities::status::Status;
 use regex::Regex;
@@ -109,7 +109,7 @@ fn tweet_unshorten_decode(tweet: &Tweet) -> String {
 }
 
 fn tweet_shorten(text: &str, toot_url: &str) -> String {
-    let (mut char_count, _) = character_count(text, 23, 23);
+    let mut char_count = character_count(text, 23, 23);
     let re = Regex::new(r"[^\s]+$").unwrap();
     let mut shortened = text.trim().to_string();
     let mut with_link = shortened.clone();
@@ -121,7 +121,7 @@ fn tweet_shorten(text: &str, toot_url: &str) -> String {
         shortened = re.replace_all(&shortened, "").trim().to_string();
         // Add a link to the toot that has the full text.
         with_link = shortened.clone() + "… " + toot_url;
-        let (new_count, _) = character_count(&with_link, 23, 23);
+        let new_count = character_count(&with_link, 23, 23);
         char_count = new_count;
     }
     with_link.to_string()

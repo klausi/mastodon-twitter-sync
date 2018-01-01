@@ -157,16 +157,20 @@ fn twitter_fetch_tweet_dates(
     let handle = core.handle();
     // Try to fetch as many tweets as possible at once, Twitter API docs say
     // that is 200.
-    let mut timeline =
+    let timeline =
         egg_mode::tweet::user_timeline(user_id, true, true, token, &handle).with_page_size(200);
+    let mut max_id = None;
     let mut dates = BTreeMap::new();
     loop {
-        let tweets = core.run(timeline.older(None)).unwrap();
+        let tweets = core.run(timeline.call(None, max_id)).unwrap();
         if tweets.is_empty() {
             break;
         }
         for tweet in tweets {
             dates.insert(tweet.created_at, tweet.id);
+            if max_id.is_none() || tweet.id < max_id.unwrap() {
+                max_id = Some(tweet.id - 1);
+            }
         }
     }
 
