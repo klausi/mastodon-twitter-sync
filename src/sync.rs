@@ -66,7 +66,9 @@ fn toot_and_tweet_are_equal(toot: &Status, tweet: &Tweet) -> bool {
     // equal to "RT username:".
     if tweet_text.starts_with("RT @") {
         let old_rt = tweet_text.replacen("RT @", "RT ", 1);
-        if old_rt.to_lowercase() == toot_text.to_lowercase() || old_rt.to_lowercase() == shortened_toot.to_lowercase() {
+        if old_rt.to_lowercase() == toot_text.to_lowercase()
+            || old_rt.to_lowercase() == shortened_toot.to_lowercase()
+        {
             return true;
         }
     }

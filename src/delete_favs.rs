@@ -88,8 +88,7 @@ pub fn twitter_delete_older_favs(user_id: u64, token: &egg_mode::Token) {
     let handle = core.handle();
     let mut remove_dates = Vec::new();
     let three_months_ago = Utc::now() - Duration::days(90);
-    let mut delete_count = 0;
-    for (date, tweet_id) in dates.range(..three_months_ago) {
+    for (delete_count, (date, tweet_id)) in dates.range(..three_months_ago).enumerate() {
         println!("Deleting Twitter fav {} from {}", tweet_id, date);
         remove_dates.push(date);
         let deletion = egg_mode::tweet::unlike(*tweet_id, token, &handle);
@@ -109,7 +108,6 @@ pub fn twitter_delete_older_favs(user_id: u64, token: &egg_mode::Token) {
             }
             Ok(_) => {}
         };
-        delete_count += 1;
         // Only delete 100 likes in one run to not run into API limits or open
         // network port limits.
         if delete_count == 100 {
