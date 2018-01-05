@@ -20,7 +20,7 @@ use tokio_core::reactor::Core;
 use config::*;
 use registration::mastodon_register;
 use registration::twitter_register;
-use sync::determine_posts;
+use sync::*;
 use delete_statuses::mastodon_delete_older_statuses;
 use delete_statuses::twitter_delete_older_statuses;
 use delete_favs::*;
@@ -83,6 +83,8 @@ fn main() {
 
     let (_, tweets) = core.run(timeline.start()).unwrap();
     let posts = determine_posts(&mastodon_statuses, &*tweets);
+
+    check_posted_before(&posts);
 
     for toot in posts.toots {
         println!("Posting to Mastodon: {}", toot);

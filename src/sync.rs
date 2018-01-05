@@ -6,6 +6,10 @@ use egg_mode_text::character_count;
 use egg_mode::tweet::Tweet;
 use mammut::entities::status::Status;
 use regex::Regex;
+use std::collections::HashSet;
+use std::iter::FromIterator;
+use std::fs::File;
+use std::io::prelude::*;
 
 // Represents new status updates that should be posted to Twitter (tweets) and
 // Mastodon (toots).
@@ -143,6 +147,35 @@ fn mastodon_toot_get_text(toot: &Status) -> String {
     replaced = replaced.replace("</p><p>", "\n\n");
     replaced = replaced.replace("<p>", "");
     dissolve::strip_html_tags(&replaced).join("")
+}
+
+// Ensure that sync posts have not been made before to prevent syncing loops.
+// Use a cache file to temporarily store posts and compare them on the next
+// invocation.
+// Panics if a post has been made before.
+pub fn check_posted_before(posts: &StatusUpdates) {
+    let cache_file = "post_cache.json";
+    let cache: HashSet<String> = match File::open(cache_file) {
+        Ok(mut file) => {
+            let mut json = String::new();
+            file.read_to_string(&mut json).unwrap();
+            serde_json::from_str(&json).unwrap()
+        }
+        Err(_) => HashSet::new(),
+    };
+    let mut all_posts = posts.toots.clone();
+    all_posts.extend(posts.tweets.clone());
+    let post_set = HashSet::from_iter(all_posts);
+    let intersection = cache.intersection(&post_set);
+    if intersection.clone().count() > 0 {
+        panic!("Error: preventing double posting {:?}", intersection);
+    }
+
+    let mut write_cache = cache.clone();
+    write_cache.extend(post_set.clone());
+    let json = serde_json::to_string(&write_cache).unwrap();
+    let mut file = File::create(cache_file).unwrap();
+    file.write_all(json.as_bytes()).unwrap();
 }
 
 #[cfg(test)]
