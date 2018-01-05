@@ -86,13 +86,13 @@ fn main() {
 
     for toot in posts.toots {
         println!("Posting to Mastodon: {}", toot);
-        //mastodon.new_status(StatusBuilder::new(toot)).unwrap();
+        mastodon.new_status(StatusBuilder::new(toot)).unwrap();
     }
 
     for tweet in posts.tweets {
         println!("Posting to Twitter: {}", tweet);
-        /*core.run(DraftTweet::new(tweet).send(&token, &handle))
-            .unwrap();*/
+        core.run(DraftTweet::new(tweet).send(&token, &handle))
+            .unwrap();
     }
 
     // Delete old mastodon statuses if that option is enabled.
