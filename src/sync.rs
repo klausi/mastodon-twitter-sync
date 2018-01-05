@@ -33,6 +33,12 @@ pub fn determine_posts(mastodon_statuses: &[Status], twitter_statuses: &[Tweet])
     }
 
     'toots: for toot in mastodon_statuses {
+        let post = tweet_shorten(&mastodon_toot_get_text(toot), &toot.url);
+        // Skip direct toots to other Mastodon users, even if they are public.
+        if post[..1] == *"@" {
+            continue;
+        }
+
         for tweet in twitter_statuses {
             // If the toot already exists we can stop here and know that we are
             // synced.
@@ -41,7 +47,6 @@ pub fn determine_posts(mastodon_statuses: &[Status], twitter_statuses: &[Tweet])
             }
         }
         // The toot is not on Twitter yet, let's post it.
-        let post = tweet_shorten(&mastodon_toot_get_text(toot), &toot.url);
         updates.tweets.push(post);
     }
     updates
@@ -306,6 +311,18 @@ UNLISTED 🔓 ✅ Tagged people
         status.content = long_toot.to_string();
         tweet.text = tweet_shorten(long_toot, &status.url).to_lowercase();
         assert!(toot_and_tweet_are_equal(&status, &tweet));
+    }
+
+    // Test that direct toots starting with "@" are not copied to twitter.
+    #[test]
+    fn direct_toot() {
+        let mut status = get_mastodon_status();
+        status.content = "@Test Hello! http://example.com".to_string();
+        let tweets = Vec::new();
+        let statuses = vec![status];
+        let posts = determine_posts(&statuses, &tweets);
+        assert!(posts.toots.is_empty());
+        assert!(posts.tweets.is_empty());
     }
 
     fn get_mastodon_status() -> Status {
