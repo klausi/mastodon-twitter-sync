@@ -154,6 +154,11 @@ fn mastodon_toot_get_text(toot: &Status) -> String {
 // invocation.
 // Panics if a post has been made before.
 pub fn check_posted_before(posts: &StatusUpdates) {
+    // If there are not status updates then we don't need to check anything.
+    if posts.toots.is_empty() && posts.tweets.is_empty() {
+        return;
+    }
+
     let cache_file = "post_cache.json";
     let cache: HashSet<String> = match File::open(cache_file) {
         Ok(mut file) => {
