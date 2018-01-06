@@ -13,7 +13,6 @@ use mammut::Mastodon;
 use mammut::Error as MammutError;
 use mammut::entities::account::Account;
 use std::collections::BTreeMap;
-use std::fs::remove_file;
 use tokio_core::reactor::Core;
 
 use config::*;
@@ -38,20 +37,7 @@ pub fn mastodon_delete_older_statuses(mastodon: &Mastodon, account: &Account) {
             }
         }
     }
-
-    let mut new_dates = dates.clone();
-    for remove_date in remove_dates {
-        new_dates.remove(remove_date);
-    }
-
-    if new_dates.is_empty() {
-        // If we have deleted all old toots from our cache file we can remove
-        // it. On the next run all toots will be fetched and the cache
-        // recreated.
-        remove_file(cache_file).unwrap();
-    } else {
-        save_dates_to_cache(cache_file, &new_dates);
-    }
+    remove_dates_from_cache(remove_dates, &dates, cache_file);
 }
 
 fn mastodon_load_toot_dates(
@@ -121,20 +107,7 @@ pub fn twitter_delete_older_statuses(user_id: u64, token: &egg_mode::Token) {
             Ok(_) => {}
         }
     }
-
-    let mut new_dates = dates.clone();
-    for remove_date in remove_dates {
-        new_dates.remove(remove_date);
-    }
-
-    if new_dates.is_empty() {
-        // If we have deleted all old tweets from our cache file we can remove
-        // it. On the next run all tweets will be fetched and the cache
-        // recreated.
-        remove_file(cache_file).unwrap();
-    } else {
-        save_dates_to_cache(cache_file, &new_dates);
-    }
+    remove_dates_from_cache(remove_dates, &dates, cache_file);
 }
 
 fn twitter_load_tweet_dates(

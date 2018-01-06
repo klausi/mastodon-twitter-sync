@@ -7,6 +7,7 @@ use chrono::prelude::*;
 use mammut::Data;
 use std::collections::BTreeMap;
 use std::fs::File;
+use std::fs::remove_file;
 use std::io::prelude::*;
 
 pub fn config_load(mut file: File) -> Config {
@@ -60,4 +61,30 @@ pub fn save_dates_to_cache(cache_file: &str, dates: &BTreeMap<DateTime<Utc>, u64
     let json = serde_json::to_string(&dates).unwrap();
     let mut file = File::create(cache_file).unwrap();
     file.write_all(json.as_bytes()).unwrap();
+}
+
+// Delete a list of dates from the given cache of dates and write the cache to
+// disk if necessary.
+pub fn remove_dates_from_cache(
+    remove_dates: Vec<&DateTime<Utc>>,
+    cached_dates: &BTreeMap<DateTime<Utc>, u64>,
+    cache_file: &str,
+) {
+    if remove_dates.is_empty() {
+        return;
+    }
+
+    let mut new_dates = cached_dates.clone();
+    for remove_date in remove_dates {
+        new_dates.remove(remove_date);
+    }
+
+    if new_dates.is_empty() {
+        // If we have deleted all old dates from our cache file we can remove
+        // it. On the next run all entries will be fetched and the cache
+        // recreated.
+        remove_file(cache_file).unwrap();
+    } else {
+        save_dates_to_cache(cache_file, &new_dates);
+    }
 }
