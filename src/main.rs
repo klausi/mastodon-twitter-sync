@@ -81,8 +81,15 @@ fn main() {
         egg_mode::tweet::user_timeline(config.twitter.user_id, false, true, &token, &handle)
             .with_page_size(50);
 
-    let (_, tweets) = core.run(timeline.start()).unwrap();
-    let posts = determine_posts(&mastodon_statuses, &*tweets);
+    let (timeline, first_tweets) = core.run(timeline.start()).unwrap();
+    let mut tweets = (*first_tweets).to_vec();
+    // We might have only one tweet because of filtering out reply tweets. Fetch
+    // some more tweets to make sure we have enough for comparing.
+    if tweets.len() < 50 {
+        let (_, mut next_tweets) = core.run(timeline.older(None)).unwrap();
+        tweets.append(&mut (*next_tweets).to_vec());
+    }
+    let posts = determine_posts(&mastodon_statuses, &tweets);
 
     check_posted_before(&posts);
 
