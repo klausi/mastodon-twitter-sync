@@ -7,13 +7,12 @@ use egg_mode::tweet::Tweet;
 use mammut::entities::status::Status;
 use regex::Regex;
 use std::collections::HashSet;
-use std::iter::FromIterator;
 use std::fs::File;
 use std::io::prelude::*;
 
 // Represents new status updates that should be posted to Twitter (tweets) and
 // Mastodon (toots).
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StatusUpdates {
     pub tweets: Vec<String>,
     pub toots: Vec<String>,
@@ -152,11 +151,10 @@ fn mastodon_toot_get_text(toot: &Status) -> String {
 // Ensure that sync posts have not been made before to prevent syncing loops.
 // Use a cache file to temporarily store posts and compare them on the next
 // invocation.
-// Panics if a post has been made before.
-pub fn check_posted_before(posts: &StatusUpdates) {
+pub fn filter_posted_before(posts: StatusUpdates) -> StatusUpdates {
     // If there are not status updates then we don't need to check anything.
     if posts.toots.is_empty() && posts.tweets.is_empty() {
-        return;
+        return posts;
     }
 
     let cache_file = "post_cache.json";
@@ -168,19 +166,33 @@ pub fn check_posted_before(posts: &StatusUpdates) {
         }
         Err(_) => HashSet::new(),
     };
-    let mut all_posts = posts.toots.clone();
-    all_posts.extend(posts.tweets.clone());
-    let post_set = HashSet::from_iter(all_posts);
-    let intersection = cache.intersection(&post_set);
-    if intersection.clone().count() > 0 {
-        panic!("Error: preventing double posting {:?}", intersection);
+    let mut filtered_posts = StatusUpdates {
+        tweets: Vec::new(),
+        toots: Vec::new(),
+    };
+    let mut write_cache = cache.clone();
+    for tweet in posts.tweets {
+        if cache.contains(&tweet) {
+            println!("Error: preventing double posting to Twitter: {}", tweet);
+        } else {
+            filtered_posts.tweets.push(tweet.clone());
+            write_cache.insert(tweet);
+        }
+    }
+    for toot in posts.toots {
+        if cache.contains(&toot) {
+            println!("Error: preventing double posting to Mastodon: {}", toot);
+        } else {
+            filtered_posts.toots.push(toot.clone());
+            write_cache.insert(toot);
+        }
     }
 
-    let mut write_cache = cache.clone();
-    write_cache.extend(post_set.clone());
     let json = serde_json::to_string(&write_cache).unwrap();
     let mut file = File::create(cache_file).unwrap();
     file.write_all(json.as_bytes()).unwrap();
+
+    filtered_posts
 }
 
 #[cfg(test)]

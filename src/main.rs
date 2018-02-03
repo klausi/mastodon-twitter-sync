@@ -89,9 +89,9 @@ fn main() {
         let (_, mut next_tweets) = core.run(timeline.older(None)).unwrap();
         tweets.append(&mut (*next_tweets).to_vec());
     }
-    let posts = determine_posts(&mastodon_statuses, &tweets);
+    let mut posts = determine_posts(&mastodon_statuses, &tweets);
 
-    check_posted_before(&posts);
+    posts = filter_posted_before(posts);
 
     for toot in posts.toots {
         println!("Posting to Mastodon: {}", toot);
