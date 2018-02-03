@@ -1,0 +1,12 @@
+language: rust
+cache: cargo
+dist: trusty
+os:
+  - linux
+  - osx
+sudo: false
+
+# Run builds for all the supported trains
+rust:
+  - nightly
+  - stable
