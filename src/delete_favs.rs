@@ -12,6 +12,7 @@ use egg_mode::error::Error as EggModeError;
 use mammut::Mastodon;
 use mammut::Error as MammutError;
 use std::collections::BTreeMap;
+use std::str::FromStr;
 use tokio_core::reactor::Core;
 
 use config::*;
@@ -55,7 +56,8 @@ fn mastodon_fetch_fav_dates(mastodon: &Mastodon, cache_file: &str) -> BTreeMap<D
             break;
         }
         for status in statuses {
-            dates.insert(status.created_at, status.id);
+            let id = u64::from_str(&status.id).unwrap();
+            dates.insert(status.created_at, id);
         }
     }
 

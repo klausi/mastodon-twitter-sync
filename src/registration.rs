@@ -3,7 +3,7 @@ extern crate mammut;
 extern crate tokio_core;
 
 use mammut::{Mastodon, Registration};
-use mammut::apps::{AppBuilder, Scope};
+use mammut::apps::{AppBuilder, Scopes};
 use std::io;
 use tokio_core::reactor::Core;
 
@@ -13,7 +13,7 @@ pub fn mastodon_register() -> Mastodon {
     let app = AppBuilder {
         client_name: "mastodon-twitter-sync",
         redirect_uris: "urn:ietf:wg:oauth:2.0:oob",
-        scopes: Scope::ReadWrite,
+        scopes: Scopes::ReadWrite,
         website: Some("https://github.com/klausi/mastodon-twitter-sync"),
     };
 

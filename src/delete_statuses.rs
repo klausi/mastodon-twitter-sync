@@ -13,6 +13,7 @@ use mammut::Mastodon;
 use mammut::Error as MammutError;
 use mammut::entities::account::Account;
 use std::collections::BTreeMap;
+use std::str::FromStr;
 use tokio_core::reactor::Core;
 
 use config::*;
@@ -60,14 +61,21 @@ fn mastodon_fetch_toot_dates(
     let mut dates = BTreeMap::new();
     loop {
         let statuses = mastodon
-            .statuses(account.id, false, false, None, max_id)
+            .statuses(
+                u64::from_str(&account.id).unwrap(),
+                false,
+                false,
+                None,
+                max_id,
+            )
             .unwrap();
         if statuses.is_empty() {
             break;
         }
-        max_id = Some(statuses.last().unwrap().id);
+        max_id = Some(u64::from_str(&statuses.last().unwrap().id).unwrap());
         for status in statuses {
-            dates.insert(status.created_at, status.id);
+            let id = u64::from_str(&status.id).unwrap();
+            dates.insert(status.created_at, id);
         }
     }
 

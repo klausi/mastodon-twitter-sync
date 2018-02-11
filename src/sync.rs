@@ -116,7 +116,7 @@ fn tweet_unshorten_decode(tweet: &Tweet) -> String {
     dissolve::strip_html_tags(&tweet_text).join("")
 }
 
-fn tweet_shorten(text: &str, toot_url: &str) -> String {
+fn tweet_shorten(text: &str, toot_url: &Option<String>) -> String {
     let mut char_count = character_count(text, 23, 23);
     let re = Regex::new(r"[^\s]+$").unwrap();
     let mut shortened = text.trim().to_string();
@@ -127,8 +127,12 @@ fn tweet_shorten(text: &str, toot_url: &str) -> String {
     while char_count > 240 {
         // Remove the last word.
         shortened = re.replace_all(&shortened, "").trim().to_string();
-        // Add a link to the toot that has the full text.
-        with_link = shortened.clone() + "… " + toot_url;
+        if let Some(ref toot_url) = *toot_url {
+            // Add a link to the toot that has the full text.
+            with_link = shortened.clone() + "… " + toot_url;
+        } else {
+            with_link = shortened.clone();
+        }
         let new_count = character_count(&with_link, 23, 23);
         char_count = new_count;
     }
@@ -230,8 +234,10 @@ DIRECT MESSAGE ✉️
 
 https://cybre.space/media/J-amFmXPvb_Mt7toGgs #tutorial #howto
 ";
-        let shortened_for_twitter =
-            tweet_shorten(toot, "https://mastodon.social/@klausi/98999025586548863");
+        let shortened_for_twitter = tweet_shorten(
+            toot,
+            &Some("https://mastodon.social/@klausi/98999025586548863".to_string()),
+        );
         assert_eq!(
             shortened_for_twitter,
             "#MASTODON POST PRIVACY - who can see your post?
