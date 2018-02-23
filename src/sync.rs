@@ -38,7 +38,7 @@ pub fn determine_posts(mastodon_statuses: &[Status], twitter_statuses: &[Tweet])
     'toots: for toot in mastodon_statuses {
         let post = tweet_shorten(&mastodon_toot_get_text(toot), &toot.url);
         // Skip direct toots to other Mastodon users, even if they are public.
-        if post[..1] == *"@" {
+        if post.starts_with("@") {
             continue;
         }
 
@@ -379,6 +379,18 @@ UNLISTED 🔓 ✅ Tagged people
         let posts = determine_posts(&statuses, &tweets);
         assert!(posts.toots.is_empty());
         assert!(posts.tweets.is_empty());
+    }
+
+    // Test that toots starting with umlauts like Ö do not panic.
+    #[test]
+    fn umlaut_toot() {
+        let mut status = get_mastodon_status();
+        status.content = "Österreich".to_string();
+        let tweets = Vec::new();
+        let statuses = vec![status];
+        let posts = determine_posts(&statuses, &tweets);
+        assert!(posts.toots.is_empty());
+        assert_eq!(posts.tweets[0], "Österreich");
     }
 
     fn get_mastodon_status() -> Status {
