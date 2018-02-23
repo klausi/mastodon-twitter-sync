@@ -60,7 +60,7 @@ fn main() {
 
     let mastodon = Mastodon::from_data(config.mastodon.app);
 
-    let account = mastodon.verify().unwrap();
+    let account = mastodon.verify_credentials().unwrap();
     let mastodon_statuses = mastodon
         .statuses(u64::from_str(&account.id).unwrap(), false, true, None, None)
         .unwrap();

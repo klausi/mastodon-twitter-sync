@@ -49,13 +49,17 @@ fn mastodon_load_fav_dates(mastodon: &Mastodon, cache_file: &str) -> BTreeMap<Da
 
 fn mastodon_fetch_fav_dates(mastodon: &Mastodon, cache_file: &str) -> BTreeMap<DateTime<Utc>, u64> {
     let mut dates = BTreeMap::new();
-    let mut favourites_pager = mastodon.favourites();
+    let mut favourites_pager = mastodon.favourites().unwrap();
+    for status in &favourites_pager.initial_items {
+        let id = u64::from_str(&status.id).unwrap();
+        dates.insert(status.created_at, id);
+    }
     loop {
-        let statuses = favourites_pager.next().unwrap();
-        if statuses.is_empty() {
+        let statuses = favourites_pager.next_page().unwrap();
+        if statuses.is_none() {
             break;
         }
-        for status in statuses {
+        for status in statuses.unwrap() {
             let id = u64::from_str(&status.id).unwrap();
             dates.insert(status.created_at, id);
         }

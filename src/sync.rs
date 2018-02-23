@@ -38,7 +38,7 @@ pub fn determine_posts(mastodon_statuses: &[Status], twitter_statuses: &[Tweet])
     'toots: for toot in mastodon_statuses {
         let post = tweet_shorten(&mastodon_toot_get_text(toot), &toot.url);
         // Skip direct toots to other Mastodon users, even if they are public.
-        if post.starts_with("@") {
+        if post.starts_with('@') {
             continue;
         }
 
