@@ -57,23 +57,18 @@ fn mastodon_fetch_toot_dates(
     account: &Account,
     cache_file: &str,
 ) -> BTreeMap<DateTime<Utc>, u64> {
-    let mut max_id = None;
     let mut dates = BTreeMap::new();
+    let mut pager = mastodon.statuses(&account.id, false, false).unwrap();
+    for status in &pager.initial_items {
+        let id = u64::from_str(&status.id).unwrap();
+        dates.insert(status.created_at, id);
+    }
     loop {
-        let statuses = mastodon
-            .statuses(
-                u64::from_str(&account.id).unwrap(),
-                false,
-                false,
-                None,
-                max_id,
-            )
-            .unwrap();
-        if statuses.is_empty() {
+        let statuses = pager.next_page().unwrap();
+        if statuses.is_none() {
             break;
         }
-        max_id = Some(u64::from_str(&statuses.last().unwrap().id).unwrap());
-        for status in statuses {
+        for status in statuses.unwrap() {
             let id = u64::from_str(&status.id).unwrap();
             dates.insert(status.created_at, id);
         }

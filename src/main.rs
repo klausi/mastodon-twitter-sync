@@ -15,7 +15,6 @@ use mammut::Mastodon;
 use mammut::status_builder::StatusBuilder;
 use std::fs::File;
 use std::io::prelude::*;
-use std::str::FromStr;
 use tokio_core::reactor::Core;
 
 use config::*;
@@ -62,8 +61,9 @@ fn main() {
 
     let account = mastodon.verify_credentials().unwrap();
     let mastodon_statuses = mastodon
-        .statuses(u64::from_str(&account.id).unwrap(), false, true, None, None)
-        .unwrap();
+        .statuses(&account.id, false, true)
+        .unwrap()
+        .initial_items;
 
     let con_token =
         egg_mode::KeyPair::new(config.twitter.consumer_key, config.twitter.consumer_secret);
