@@ -1,7 +1,6 @@
 extern crate dissolve;
 extern crate serde_json;
 
-use chrono::prelude::*;
 use egg_mode_text::character_count;
 use egg_mode::tweet::Tweet;
 use mammut::entities::status::Status;
@@ -203,8 +202,8 @@ pub fn filter_posted_before(posts: StatusUpdates) -> StatusUpdates {
 mod tests {
 
     use super::*;
+    use chrono::Utc;
     use egg_mode::tweet::{TweetEntities, TweetSource};
-    use std::io::prelude::*;
     use std::fs::File;
 
     #[test]
