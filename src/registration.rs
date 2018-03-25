@@ -62,11 +62,11 @@ pub fn twitter_register() -> TwitterConfig {
             access: ref access_token,
             ..
         } => TwitterConfig {
-            consumer_key: consumer_key,
-            consumer_secret: consumer_secret,
+            consumer_key,
+            consumer_secret,
             access_token: access_token.key.to_string(),
             access_token_secret: access_token.secret.to_string(),
-            user_id: user_id,
+            user_id,
             user_name: screen_name,
             delete_older_statuses: false,
             delete_older_favs: false,
