@@ -24,10 +24,10 @@ pub struct Config {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MastodonConfig {
-    pub app: Data,
     pub delete_older_statuses: bool,
     #[serde(default = "config_false_default")]
     pub delete_older_favs: bool,
+    pub app: Data,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -89,5 +89,40 @@ pub fn remove_dates_from_cache(
         remove_file(cache_file).unwrap();
     } else {
         save_dates_to_cache(cache_file, &new_dates);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    extern crate toml;
+    use config::*;
+
+    // Ensure that serializing/deserializing of the TOML config does not throw
+    // errors.
+    #[test]
+    fn serialize_config() {
+        let toml_config = r#"
+[mastodon]
+delete_older_statuses = true
+delete_older_favs = true
+[mastodon.app]
+base = "https://mastodon.social"
+client_id = "abcd"
+client_secret = "abcd"
+redirect = "urn:ietf:wg:oauth:2.0:oob"
+token = "1234"
+[twitter]
+consumer_key = "abcd"
+consumer_secret = "abcd"
+access_token = "1234"
+access_token_secret = "1234"
+user_id = 0
+user_name = " "
+delete_older_statuses = true
+delete_older_favs = true
+"#;
+        let config: Config = toml::from_str(toml_config).unwrap();
+        toml::to_string(&config).unwrap();
     }
 }
