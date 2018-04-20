@@ -5,12 +5,12 @@ extern crate regex;
 extern crate tokio_core;
 extern crate toml;
 
-use chrono::Duration;
 use chrono::prelude::*;
-use egg_mode::error::TwitterErrors;
+use chrono::Duration;
 use egg_mode::error::Error as EggModeError;
-use mammut::Mastodon;
+use egg_mode::error::TwitterErrors;
 use mammut::Error as MammutError;
+use mammut::Mastodon;
 use std::collections::BTreeMap;
 use std::str::FromStr;
 use tokio_core::reactor::Core;

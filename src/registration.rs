@@ -2,8 +2,8 @@ extern crate egg_mode;
 extern crate mammut;
 extern crate tokio_core;
 
-use mammut::{Mastodon, Registration};
 use mammut::apps::{AppBuilder, Scopes};
+use mammut::{Mastodon, Registration};
 use std::io;
 use tokio_core::reactor::Core;
 

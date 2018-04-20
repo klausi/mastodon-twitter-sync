@@ -6,8 +6,8 @@ extern crate toml;
 use chrono::prelude::*;
 use mammut::Data;
 use std::collections::BTreeMap;
-use std::fs::File;
 use std::fs::remove_file;
+use std::fs::File;
 use std::io::prelude::*;
 
 pub fn config_load(mut file: File) -> Config {

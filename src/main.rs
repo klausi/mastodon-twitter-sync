@@ -11,25 +11,26 @@ extern crate tokio_core;
 extern crate toml;
 
 use egg_mode::tweet::DraftTweet;
-use mammut::Mastodon;
 use mammut::status_builder::StatusBuilder;
+use mammut::Mastodon;
 use std::fs::File;
 use std::io::prelude::*;
+use std::process;
 use tokio_core::reactor::Core;
 
 use config::*;
+use delete_favs::*;
+use delete_statuses::mastodon_delete_older_statuses;
+use delete_statuses::twitter_delete_older_statuses;
 use registration::mastodon_register;
 use registration::twitter_register;
 use sync::*;
-use delete_statuses::mastodon_delete_older_statuses;
-use delete_statuses::twitter_delete_older_statuses;
-use delete_favs::*;
 
 mod config;
+mod delete_favs;
+mod delete_statuses;
 mod registration;
 mod sync;
-mod delete_statuses;
-mod delete_favs;
 
 fn main() {
     let config = match File::open("mastodon-twitter-sync.toml") {
@@ -59,11 +60,20 @@ fn main() {
 
     let mastodon = Mastodon::from_data(config.mastodon.app);
 
-    let account = mastodon.verify_credentials().unwrap();
-    let mastodon_statuses = mastodon
-        .statuses(&account.id, false, true)
-        .unwrap()
-        .initial_items;
+    let account = match mastodon.verify_credentials() {
+        Ok(account) => account,
+        Err(e) => {
+            println!("Error connecting to Mastodon: {:#?}", e);
+            process::exit(1);
+        }
+    };
+    let mastodon_statuses = match mastodon.statuses(&account.id, false, true) {
+        Ok(statuses) => statuses.initial_items,
+        Err(e) => {
+            println!("Error fetching toots from Mastodon: {:#?}", e);
+            process::exit(2);
+        }
+    };
 
     let con_token =
         egg_mode::KeyPair::new(config.twitter.consumer_key, config.twitter.consumer_secret);
@@ -82,12 +92,24 @@ fn main() {
         egg_mode::tweet::user_timeline(config.twitter.user_id, false, true, &token, &handle)
             .with_page_size(50);
 
-    let (timeline, first_tweets) = core.run(timeline.start()).unwrap();
+    let (timeline, first_tweets) = match core.run(timeline.start()) {
+        Ok(tweets) => tweets,
+        Err(e) => {
+            println!("Error fetching tweets from Twitter: {:#?}", e);
+            process::exit(3);
+        }
+    };
     let mut tweets = (*first_tweets).to_vec();
     // We might have only one tweet because of filtering out reply tweets. Fetch
     // some more tweets to make sure we have enough for comparing.
     if tweets.len() < 50 {
-        let (_, mut next_tweets) = core.run(timeline.older(None)).unwrap();
+        let (_, mut next_tweets) = match core.run(timeline.older(None)) {
+            Ok(tweets) => tweets,
+            Err(e) => {
+                println!("Error fetching older tweets from Twitter: {:#?}", e);
+                process::exit(4);
+            }
+        };
         tweets.append(&mut (*next_tweets).to_vec());
     }
     let mut posts = determine_posts(&mastodon_statuses, &tweets);
@@ -96,13 +118,18 @@ fn main() {
 
     for toot in posts.toots {
         println!("Posting to Mastodon: {}", toot);
-        mastodon.new_status(StatusBuilder::new(toot)).unwrap();
+        if let Err(e) = mastodon.new_status(StatusBuilder::new(toot)) {
+            println!("Error posting toot to Mastodon: {:#?}", e);
+            process::exit(5);
+        }
     }
 
     for tweet in posts.tweets {
         println!("Posting to Twitter: {}", tweet);
-        core.run(DraftTweet::new(tweet).send(&token, &handle))
-            .unwrap();
+        if let Err(e) = core.run(DraftTweet::new(tweet).send(&token, &handle)) {
+            println!("Error posting tweet to Twitter: {:#?}", e);
+            process::exit(6);
+        }
     }
 
     // Delete old mastodon statuses if that option is enabled.
