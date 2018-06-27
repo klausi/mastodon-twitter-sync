@@ -42,7 +42,8 @@ pub fn twitter_register() -> TwitterConfig {
     let handle = core.handle();
 
     let con_token = egg_mode::KeyPair::new(consumer_key.clone(), consumer_secret.clone());
-    let request_token = core.run(egg_mode::request_token(&con_token, "oob", &handle))
+    let request_token = core
+        .run(egg_mode::request_token(&con_token, "oob", &handle))
         .unwrap();
     println!(
         "Click this link to authorize on Twitter: {}",
@@ -50,12 +51,13 @@ pub fn twitter_register() -> TwitterConfig {
     );
     let pin = console_input("Paste your PIN");
 
-    let (token, user_id, screen_name) = core.run(egg_mode::access_token(
-        con_token,
-        &request_token,
-        pin,
-        &handle,
-    )).unwrap();
+    let (token, user_id, screen_name) =
+        core.run(egg_mode::access_token(
+            con_token,
+            &request_token,
+            pin,
+            &handle,
+        )).unwrap();
 
     match token {
         egg_mode::Token::Access {
