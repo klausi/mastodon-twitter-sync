@@ -465,8 +465,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "mammut"
-version = "0.10.1"
-source = "git+https://github.com/klausi/Mammut?branch=account-moved#7dfc470b18073c6499bd41d9344dce0d8275a946"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "chrono 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "reqwest 0.8.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -497,7 +497,7 @@ dependencies = [
  "dissolve 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "egg-mode 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "egg-mode-text 1.14.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "mammut 0.10.1 (git+https://github.com/klausi/Mammut?branch=account-moved)",
+ "mammut 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.67 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.67 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1491,7 +1491,7 @@ dependencies = [
 "checksum log 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)" = "e19e8d5c34a3e0e2223db8e060f9e8264aeeb5c5fc64a4ee9965c062211c024b"
 "checksum log 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "6fddaa003a65722a7fb9e26b0ce95921fe4ba590542ced664d8ce2fa26f9f3ac"
 "checksum mac 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
-"checksum mammut 0.10.1 (git+https://github.com/klausi/Mammut?branch=account-moved)" = "<none>"
+"checksum mammut 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)" = "cb387877709d15116d8d16e01bf45169c7999507f734bf624b9c44ffa7a49f69"
 "checksum markup5ever 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "2cf89d3e0486c32c9d99521455ddf9a438910a1ce2bd376936086edc15dff5fc"
 "checksum matches 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "100aabe6b8ff4e4a7e32c1c13523379802df0772b82466207ac25b013f193376"
 "checksum memchr 0.1.11 (registry+https://github.com/rust-lang/crates.io-index)" = "d8b629fb514376c675b98c1421e80b151d3817ac42d7c667717d282761418d20"

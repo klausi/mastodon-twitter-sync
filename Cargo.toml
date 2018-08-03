@@ -8,14 +8,10 @@ chrono = ">=0.4.0"
 dissolve = ">=0.2.2"
 egg-mode = ">=0.12"
 egg-mode-text = ">=1.14.7"
-mammut = ">=0.10.0-rc2"
+mammut = ">=0.11.0"
 regex = ">=0.2.2"
 serde = ">=1.0"
 serde_derive = ">=1.0.19"
 tokio-core = ">=0.1.10"
 toml = ">=0.4.5"
 serde_json = ">=1.0.6"
-
-[patch.crates-io]
-mammut = { git = "https://github.com/klausi/Mammut", branch = "account-moved" }
-#mammut = { path = "../Mammut" }
