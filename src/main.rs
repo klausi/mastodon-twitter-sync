@@ -12,7 +12,7 @@ extern crate toml;
 
 use egg_mode::tweet::DraftTweet;
 use mammut::status_builder::StatusBuilder;
-use mammut::Mastodon;
+use mammut::{Mastodon, StatusesRequest};
 use std::fs::File;
 use std::io::prelude::*;
 use std::process;
@@ -67,7 +67,8 @@ fn main() {
             process::exit(1);
         }
     };
-    let mastodon_statuses = match mastodon.statuses(&account.id, false, true) {
+    // Get most recent toots but without replies.
+    let mastodon_statuses = match mastodon.statuses(&account.id, StatusesRequest::new().exclude_replies()) {
         Ok(statuses) => statuses.initial_items,
         Err(e) => {
             println!("Error fetching toots from Mastodon: {:#?}", e);

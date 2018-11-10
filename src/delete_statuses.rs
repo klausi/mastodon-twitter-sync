@@ -58,7 +58,7 @@ fn mastodon_fetch_toot_dates(
     cache_file: &str,
 ) -> BTreeMap<DateTime<Utc>, u64> {
     let mut dates = BTreeMap::new();
-    let mut pager = mastodon.statuses(&account.id, false, false).unwrap();
+    let mut pager = mastodon.statuses(&account.id, None).unwrap();
     for status in &pager.initial_items {
         let id = u64::from_str(&status.id).unwrap();
         dates.insert(status.created_at, id);
