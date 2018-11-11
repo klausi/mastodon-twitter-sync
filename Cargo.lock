@@ -570,7 +570,7 @@ dependencies = [
 
 [[package]]
 name = "mastodon-twitter-sync"
-version = "0.3.5"
+version = "1.0.0"
 dependencies = [
  "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "dissolve 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
