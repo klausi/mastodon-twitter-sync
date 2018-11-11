@@ -86,13 +86,12 @@ pub fn twitter_delete_older_statuses(user_id: u64, token: &egg_mode::Token) {
     let cache_file = "twitter_cache.json";
     let dates = twitter_load_tweet_dates(user_id, token, cache_file);
     let mut core = Core::new().unwrap();
-    let handle = core.handle();
     let mut remove_dates = Vec::new();
     let three_months_ago = Utc::now() - Duration::days(90);
     for (date, tweet_id) in dates.range(..three_months_ago) {
         println!("Deleting tweet {} from {}", tweet_id, date);
         remove_dates.push(date);
-        let deletion = egg_mode::tweet::delete(*tweet_id, token, &handle);
+        let deletion = egg_mode::tweet::delete(*tweet_id, token);
         let delete_result = core.run(deletion);
         match delete_result {
             // The status could have been deleted already by the user, ignore API
@@ -130,11 +129,9 @@ fn twitter_fetch_tweet_dates(
     cache_file: &str,
 ) -> BTreeMap<DateTime<Utc>, u64> {
     let mut core = Core::new().unwrap();
-    let handle = core.handle();
     // Try to fetch as many tweets as possible at once, Twitter API docs say
     // that is 200.
-    let timeline =
-        egg_mode::tweet::user_timeline(user_id, true, true, token, &handle).with_page_size(200);
+    let timeline = egg_mode::tweet::user_timeline(user_id, true, true, token).with_page_size(200);
     let mut max_id = None;
     let mut dates = BTreeMap::new();
     loop {

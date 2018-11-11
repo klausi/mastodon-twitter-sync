@@ -419,6 +419,7 @@ UNLISTED 🔓 ✅ Tagged people
             extended_entities: None,
             favorite_count: 0,
             favorited: None,
+            filter_level: None,
             id: 123456,
             in_reply_to_user_id: None,
             in_reply_to_screen_name: None,

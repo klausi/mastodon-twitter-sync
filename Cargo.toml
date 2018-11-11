@@ -6,7 +6,10 @@ authors = ["Klaus Purer <klaus.purer@gmail.com>"]
 [dependencies]
 chrono = ">=0.4.0"
 dissolve = ">=0.2.2"
-egg-mode = ">=0.12"
+# egg-mode = ">=0.13"
+# There is no egg-mode release yet for the Hyper upgrade which we need for
+# OpenSSL 1.1.1 support. Switch back to 0.13 once that is released.
+egg-mode = { git = "https://github.com/QuietMisdreavus/twitter-rs", branch = "master" }
 egg-mode-text = ">=1.14.7"
 mammut = ">=0.12.0"
 regex = ">=0.2.2"

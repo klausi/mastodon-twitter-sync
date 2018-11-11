@@ -68,13 +68,14 @@ fn main() {
         }
     };
     // Get most recent toots but without replies.
-    let mastodon_statuses = match mastodon.statuses(&account.id, StatusesRequest::new().exclude_replies()) {
-        Ok(statuses) => statuses.initial_items,
-        Err(e) => {
-            println!("Error fetching toots from Mastodon: {:#?}", e);
-            process::exit(2);
-        }
-    };
+    let mastodon_statuses =
+        match mastodon.statuses(&account.id, StatusesRequest::new().exclude_replies()) {
+            Ok(statuses) => statuses.initial_items,
+            Err(e) => {
+                println!("Error fetching toots from Mastodon: {:#?}", e);
+                process::exit(2);
+            }
+        };
 
     let con_token =
         egg_mode::KeyPair::new(config.twitter.consumer_key, config.twitter.consumer_secret);
@@ -88,10 +89,8 @@ fn main() {
     };
 
     let mut core = Core::new().unwrap();
-    let handle = core.handle();
-    let timeline =
-        egg_mode::tweet::user_timeline(config.twitter.user_id, false, true, &token, &handle)
-            .with_page_size(50);
+    let timeline = egg_mode::tweet::user_timeline(config.twitter.user_id, false, true, &token)
+        .with_page_size(50);
 
     let (timeline, first_tweets) = match core.run(timeline.start()) {
         Ok(tweets) => tweets,
@@ -127,7 +126,7 @@ fn main() {
 
     for tweet in posts.tweets {
         println!("Posting to Twitter: {}", tweet);
-        if let Err(e) = core.run(DraftTweet::new(tweet).send(&token, &handle)) {
+        if let Err(e) = core.run(DraftTweet::new(tweet).send(&token)) {
             println!("Error posting tweet to Twitter: {:#?}", e);
             process::exit(6);
         }
