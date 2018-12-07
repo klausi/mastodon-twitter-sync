@@ -1,10 +1,6 @@
-extern crate chrono;
-extern crate mammut;
-extern crate serde_json;
-extern crate toml;
-
 use chrono::prelude::*;
 use mammut::Data;
+use serde_derive::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs::remove_file;
 use std::fs::File;
@@ -95,8 +91,7 @@ pub fn remove_dates_from_cache(
 #[cfg(test)]
 mod tests {
 
-    extern crate toml;
-    use config::*;
+    use crate::config::*;
 
     // Ensure that serializing/deserializing of the TOML config does not throw
     // errors.

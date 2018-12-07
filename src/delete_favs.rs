@@ -1,10 +1,3 @@
-extern crate chrono;
-extern crate egg_mode;
-extern crate mammut;
-extern crate regex;
-extern crate tokio_core;
-extern crate toml;
-
 use chrono::prelude::*;
 use chrono::Duration;
 use egg_mode::error::Error as EggModeError;
@@ -15,7 +8,7 @@ use std::collections::BTreeMap;
 use std::str::FromStr;
 use tokio_core::reactor::Core;
 
-use config::*;
+use crate::config::*;
 
 // Delete old favourites of this account that are older than 90 days.
 pub fn mastodon_delete_older_favs(mastodon: &Mastodon) {

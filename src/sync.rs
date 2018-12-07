@@ -1,6 +1,3 @@
-extern crate dissolve;
-extern crate serde_json;
-
 use egg_mode::tweet::Tweet;
 use egg_mode_text::character_count;
 use mammut::entities::status::Status;

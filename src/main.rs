@@ -1,15 +1,3 @@
-extern crate chrono;
-extern crate dissolve;
-extern crate egg_mode;
-extern crate egg_mode_text;
-extern crate mammut;
-extern crate regex;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_json;
-extern crate tokio_core;
-extern crate toml;
-
 use egg_mode::tweet::DraftTweet;
 use mammut::status_builder::StatusBuilder;
 use mammut::{Mastodon, StatusesRequest};
@@ -18,13 +6,13 @@ use std::io::prelude::*;
 use std::process;
 use tokio_core::reactor::Core;
 
-use config::*;
-use delete_favs::*;
-use delete_statuses::mastodon_delete_older_statuses;
-use delete_statuses::twitter_delete_older_statuses;
-use registration::mastodon_register;
-use registration::twitter_register;
-use sync::*;
+use crate::config::*;
+use crate::delete_favs::*;
+use crate::delete_statuses::mastodon_delete_older_statuses;
+use crate::delete_statuses::twitter_delete_older_statuses;
+use crate::registration::mastodon_register;
+use crate::registration::twitter_register;
+use crate::sync::*;
 
 mod config;
 mod delete_favs;
