@@ -55,36 +55,48 @@ pub fn determine_posts(mastodon_statuses: &[Status], twitter_statuses: &[Tweet])
 fn toot_and_tweet_are_equal(toot: &Status, tweet: &Tweet) -> bool {
     // Strip markup from Mastodon toot.
     let toot_text = mastodon_toot_get_text(toot);
+    let mut toot_compare = toot_text.to_lowercase();
+    // Remove http:// and https:// for comparing because Twitter sometimes adds
+    // those randomly.
+    toot_compare = toot_compare.replace("http://", "");
+    toot_compare = toot_compare.replace("https://", "");
     // Replace those ugly t.co URLs in the tweet text.
     let tweet_text = tweet_unshorten_decode(tweet);
-    if toot_text.to_lowercase() == tweet_text.to_lowercase() {
+    let mut tweet_compare = tweet_text.to_lowercase();
+    tweet_compare = tweet_compare.replace("http://", "");
+    tweet_compare = tweet_compare.replace("https://", "");
+
+    if toot_compare == tweet_compare {
         return true;
     }
     // Mastodon allows up to 500 characters, so we might need to shorten the
     // toot.
     let shortened_toot = tweet_shorten(&toot_text, &toot.url);
-    if shortened_toot.to_lowercase() == tweet_text.to_lowercase() {
+    let mut shortened_toot_compare = shortened_toot.to_lowercase();
+    shortened_toot_compare = shortened_toot_compare.replace("http://", "");
+    shortened_toot_compare = shortened_toot_compare.replace("https://", "");
+
+    if shortened_toot_compare == tweet_compare {
         return true;
     }
+
     // Support for old posts that started with "RT @username:", we consider them
     // equal to "RT username:".
-    if tweet_text.starts_with("RT @") {
-        let old_rt = tweet_text.replacen("RT @", "RT ", 1);
-        if old_rt.to_lowercase() == toot_text.to_lowercase()
-            || old_rt.to_lowercase() == shortened_toot.to_lowercase()
-        {
+    if tweet_compare.starts_with("rt @") {
+        let old_rt = tweet_compare.replacen("rt @", "rt ", 1);
+        if old_rt == toot_compare || old_rt == shortened_toot_compare {
             return true;
         }
     }
-    if toot_text.starts_with("RT @") {
-        let old_rt = toot_text.replacen("RT @", "RT ", 1);
-        if old_rt.to_lowercase() == tweet_text.to_lowercase() {
+    if toot_compare.starts_with("rt @") {
+        let old_rt = toot_compare.replacen("rt @", "rt ", 1);
+        if old_rt == tweet_compare {
             return true;
         }
     }
-    if shortened_toot.starts_with("RT @") {
-        let old_rt = shortened_toot.replacen("RT @", "RT ", 1);
-        if old_rt.to_lowercase() == tweet_text.to_lowercase() {
+    if shortened_toot_compare.starts_with("rt @") {
+        let old_rt = shortened_toot_compare.replacen("rt @", "rt ", 1);
+        if old_rt == tweet_compare {
             return true;
         }
     }
@@ -200,6 +212,7 @@ mod tests {
 
     use super::*;
     use chrono::Utc;
+    use egg_mode::entities::{HashtagEntity, UrlEntity};
     use egg_mode::tweet::{TweetEntities, TweetSource};
     use std::fs::File;
 
@@ -387,6 +400,33 @@ UNLISTED 🔓 ✅ Tagged people
         let posts = determine_posts(&statuses, &tweets);
         assert!(posts.toots.is_empty());
         assert_eq!(posts.tweets[0], "Österreich");
+    }
+
+    // Test that posting something looking like a URL/domain is considered
+    // equal coming back from Twitter.
+    #[test]
+    fn urls_in_posts() {
+        let mut status = get_mastodon_status();
+        status.content = "<p>What happened to the bofa.lol instance? <a href=\"https://mastodon.social/tags/mastodon\" class=\"mention hashtag\" rel=\"tag\">#<span>mastodon</span></a></p>".to_string();
+        let mut tweet = get_twitter_status();
+        tweet.text = "What happened to the https://t.co/OxEvHBajwd instance? #mastodon".to_string();
+        tweet.entities = TweetEntities {
+            hashtags: vec![HashtagEntity {
+                range: (55, 64),
+                text: "mastodon".to_string(),
+            }],
+            symbols: Vec::new(),
+            urls: vec![UrlEntity {
+                display_url: "bofa.lol".to_string(),
+                expanded_url: "http://bofa.lol".to_string(),
+                range: (21, 44),
+                url: "https://t.co/OxEvHBajwd".to_string(),
+            }],
+            user_mentions: Vec::new(),
+            media: None,
+        };
+
+        assert!(toot_and_tweet_are_equal(&status, &tweet));
     }
 
     fn get_mastodon_status() -> Status {
