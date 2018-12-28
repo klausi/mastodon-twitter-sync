@@ -1,6 +1,7 @@
 use egg_mode::tweet::Tweet;
 use egg_mode_text::character_count;
 use mammut::entities::status::Status;
+use mammut::status_builder::StatusBuilder;
 use regex::Regex;
 use std::collections::HashSet;
 use std::fs::File;
@@ -11,7 +12,7 @@ use std::io::prelude::*;
 #[derive(Debug, Clone)]
 pub struct StatusUpdates {
     pub tweets: Vec<String>,
-    pub toots: Vec<String>,
+    pub toots: Vec<StatusBuilder>,
 }
 
 pub fn determine_posts(mastodon_statuses: &[Status], twitter_statuses: &[Tweet]) -> StatusUpdates {
@@ -28,7 +29,9 @@ pub fn determine_posts(mastodon_statuses: &[Status], twitter_statuses: &[Tweet])
             }
         }
         // The tweet is not on Mastodon yet, let's post it.
-        updates.toots.push(tweet_unshorten_decode(tweet));
+        updates
+            .toots
+            .push(StatusBuilder::new(tweet_unshorten_decode(tweet)));
     }
 
     'toots: for toot in mastodon_statuses {
@@ -192,11 +195,14 @@ pub fn filter_posted_before(posts: StatusUpdates) -> StatusUpdates {
         }
     }
     for toot in posts.toots {
-        if cache.contains(&toot) {
-            println!("Error: preventing double posting to Mastodon: {}", toot);
+        if cache.contains(&toot.status) {
+            println!(
+                "Error: preventing double posting to Mastodon: {}",
+                toot.status
+            );
         } else {
             filtered_posts.toots.push(toot.clone());
-            write_cache.insert(toot);
+            write_cache.insert(toot.status);
         }
     }
 
@@ -322,7 +328,7 @@ UNLISTED 🔓 ✅ Tagged people
         let mut status = get_twitter_status();
         status.text = "You &amp; me!".to_string();
         let posts = determine_posts(&Vec::new(), &vec![status]);
-        assert_eq!(posts.toots[0], "You & me!");
+        assert_eq!(posts.toots[0].status, "You & me!");
     }
 
     // Test that a boost on Mastodon is prefixed with "RT username:" when posted
