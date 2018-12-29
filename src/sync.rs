@@ -1,7 +1,6 @@
 use egg_mode::tweet::Tweet;
 use egg_mode_text::character_count;
 use mammut::entities::status::Status;
-use mammut::status_builder::StatusBuilder;
 use regex::Regex;
 use std::collections::HashSet;
 use std::fs::File;
@@ -12,7 +11,15 @@ use std::io::prelude::*;
 #[derive(Debug, Clone)]
 pub struct StatusUpdates {
     pub tweets: Vec<String>,
-    pub toots: Vec<StatusBuilder>,
+    pub toots: Vec<NewStatus>,
+}
+
+// A new status for posting. Optionally has links to media (images) that should
+// be attached.
+#[derive(Debug, Clone)]
+pub struct NewStatus {
+    pub text: String,
+    pub attachment_urls: Vec<String>,
 }
 
 pub fn determine_posts(mastodon_statuses: &[Status], twitter_statuses: &[Tweet]) -> StatusUpdates {
@@ -29,9 +36,10 @@ pub fn determine_posts(mastodon_statuses: &[Status], twitter_statuses: &[Tweet])
             }
         }
         // The tweet is not on Mastodon yet, let's post it.
-        updates
-            .toots
-            .push(StatusBuilder::new(tweet_unshorten_decode(tweet)));
+        updates.toots.push(NewStatus {
+            text: tweet_unshorten_decode(tweet),
+            attachment_urls: Vec::new(),
+        });
     }
 
     'toots: for toot in mastodon_statuses {
@@ -109,8 +117,12 @@ fn toot_and_tweet_are_equal(toot: &Status, tweet: &Tweet) -> bool {
 
 // Replace t.co URLs and HTML entity decode &amp;
 fn tweet_unshorten_decode(tweet: &Tweet) -> String {
-    let (mut tweet_text, urls) = match tweet.retweeted_status {
-        None => (tweet.text.clone(), &tweet.entities.urls),
+    let (mut tweet_text, urls, media) = match tweet.retweeted_status {
+        None => (
+            tweet.text.clone(),
+            &tweet.entities.urls,
+            &tweet.entities.media,
+        ),
         Some(ref retweet) => (
             format!(
                 "RT {}: {}",
@@ -118,11 +130,21 @@ fn tweet_unshorten_decode(tweet: &Tweet) -> String {
                 retweet.text
             ),
             &retweet.entities.urls,
+            &retweet.entities.media,
         ),
     };
     for url in urls {
         tweet_text = tweet_text.replace(&url.url, &url.expanded_url);
     }
+    // Remove the last media link if there is one, we will upload attachments
+    // directly to Mastodon.
+    if let Some(media) = media {
+        for attachment in media {
+            tweet_text = tweet_text.replace(&attachment.url, "");
+        }
+    }
+    tweet_text = tweet_text.trim().to_string();
+
     // Twitterposts have HTML entities such as &amp;, we need to decode them.
     dissolve::strip_html_tags(&tweet_text).join("")
 }
@@ -195,14 +217,14 @@ pub fn filter_posted_before(posts: StatusUpdates) -> StatusUpdates {
         }
     }
     for toot in posts.toots {
-        if cache.contains(&toot.status) {
+        if cache.contains(&toot.text) {
             println!(
                 "Error: preventing double posting to Mastodon: {}",
-                toot.status
+                toot.text
             );
         } else {
             filtered_posts.toots.push(toot.clone());
-            write_cache.insert(toot.status);
+            write_cache.insert(toot.text);
         }
     }
 
@@ -218,8 +240,11 @@ mod tests {
 
     use super::*;
     use chrono::Utc;
-    use egg_mode::entities::{HashtagEntity, UrlEntity};
-    use egg_mode::tweet::{TweetEntities, TweetSource};
+    use egg_mode::entities::ResizeMode::{Crop, Fit};
+    use egg_mode::entities::{
+        HashtagEntity, MediaEntity, MediaSize, MediaSizes, MediaType, UrlEntity,
+    };
+    use egg_mode::tweet::{ExtendedTweetEntities, TweetEntities, TweetSource};
     use std::fs::File;
 
     #[test]
@@ -328,7 +353,7 @@ UNLISTED 🔓 ✅ Tagged people
         let mut status = get_twitter_status();
         status.text = "You &amp; me!".to_string();
         let posts = determine_posts(&Vec::new(), &vec![status]);
-        assert_eq!(posts.toots[0].status, "You & me!");
+        assert_eq!(posts.toots[0].text, "You & me!");
     }
 
     // Test that a boost on Mastodon is prefixed with "RT username:" when posted
@@ -435,6 +460,18 @@ UNLISTED 🔓 ✅ Tagged people
         assert!(toot_and_tweet_are_equal(&status, &tweet));
     }
 
+    // Test that if there are pictures in a tweet that they are attached as
+    // media files to the Mastodon toot.
+    #[test]
+    fn pictures_in_tweet() {
+        let tweets = vec![get_twitter_status_media()];
+        let statuses = Vec::new();
+        let posts = determine_posts(&statuses, &tweets);
+
+        let status = &posts.toots[0];
+        assert_eq!(status.text, "Verhalten bei #Hausdurchsuchung");
+    }
+
     fn get_mastodon_status() -> Status {
         let json = {
             let mut file = File::open("src/mastodon_status.json").unwrap();
@@ -480,6 +517,121 @@ UNLISTED 🔓 ✅ Tagged people
                 url: "".to_string(),
             },
             text: "".to_string(),
+            truncated: false,
+            user: None,
+            withheld_copyright: false,
+            withheld_in_countries: None,
+            withheld_scope: None,
+        }
+    }
+
+    fn get_twitter_status_media() -> Tweet {
+        Tweet {
+            coordinates: None,
+            created_at: Utc::now(),
+            current_user_retweet: None,
+            display_text_range: Some((0, 31)),
+            entities: TweetEntities {
+                hashtags: vec![HashtagEntity {
+                    range: (14, 31),
+                    text: "Hausdurchsuchung".to_string(),
+                }],
+                symbols: Vec::new(),
+                urls: Vec::new(),
+                user_mentions: Vec::new(),
+                media: Some(vec![MediaEntity {
+                    display_url: "pic.twitter.com/AhiyYybK1m".to_string(),
+                    expanded_url: "https://twitter.com/_example_/status/1234567890/photo/1"
+                        .to_string(),
+                    id: 1076066227640889347,
+                    range: (32, 55),
+                    media_url: "http://pbs.twimg.com/media/Du70iGVUcAMgBp6.jpg".to_string(),
+                    media_url_https: "https://pbs.twimg.com/media/Du70iGVUcAMgBp6.jpg".to_string(),
+                    sizes: MediaSizes {
+                        thumb: MediaSize {
+                            w: 150,
+                            h: 150,
+                            resize: Crop,
+                        },
+                        small: MediaSize {
+                            w: 612,
+                            h: 680,
+                            resize: Fit,
+                        },
+                        medium: MediaSize {
+                            w: 716,
+                            h: 795,
+                            resize: Fit,
+                        },
+                        large: MediaSize {
+                            w: 716,
+                            h: 795,
+                            resize: Fit,
+                        },
+                    },
+                    source_status_id: None,
+                    media_type: MediaType::Photo,
+                    url: "https://t.co/AhiyYybK1m".to_string(),
+                    video_info: None,
+                }]),
+            },
+            extended_entities: Some(ExtendedTweetEntities {
+                media: vec![MediaEntity {
+                    display_url: "pic.twitter.com/AhiyYybK1m".to_string(),
+                    expanded_url: "https://twitter.com/_example_/status/1234567890/photo/1"
+                        .to_string(),
+                    id: 1076066227640889347,
+                    range: (32, 55),
+                    media_url: "http://pbs.twimg.com/media/Du70iGVUcAMgBp6.jpg".to_string(),
+                    media_url_https: "https://pbs.twimg.com/media/Du70iGVUcAMgBp6.jpg".to_string(),
+                    sizes: MediaSizes {
+                        thumb: MediaSize {
+                            w: 150,
+                            h: 150,
+                            resize: Crop,
+                        },
+                        small: MediaSize {
+                            w: 612,
+                            h: 680,
+                            resize: Fit,
+                        },
+                        medium: MediaSize {
+                            w: 716,
+                            h: 795,
+                            resize: Fit,
+                        },
+                        large: MediaSize {
+                            w: 716,
+                            h: 795,
+                            resize: Fit,
+                        },
+                    },
+                    source_status_id: None,
+                    media_type: MediaType::Photo,
+                    url: "https://t.co/AhiyYybK1m".to_string(),
+                    video_info: None,
+                }],
+            }),
+            favorite_count: 0,
+            favorited: Some(false),
+            filter_level: None,
+            id: 1234567890,
+            in_reply_to_user_id: None,
+            in_reply_to_screen_name: None,
+            in_reply_to_status_id: None,
+            lang: "de".to_string(),
+            place: None,
+            possibly_sensitive: Some(false),
+            quoted_status_id: None,
+            quoted_status: None,
+            retweet_count: 0,
+            retweeted: Some(false),
+            retweeted_status: None,
+            source: TweetSource {
+                name: "Twitter Web Client".to_string(),
+                url: "http://twitter.com".to_string(),
+            },
+            text: "Verhalten bei #Hausdurchsuchung https://t.co/AhiyYybK1m".to_string(),
             truncated: false,
             user: None,
             withheld_copyright: false,

@@ -1,4 +1,5 @@
 use egg_mode::tweet::DraftTweet;
+use mammut::status_builder::StatusBuilder;
 use mammut::{Mastodon, StatusesRequest};
 use std::fs::File;
 use std::io::prelude::*;
@@ -104,8 +105,8 @@ fn main() {
     posts = filter_posted_before(posts);
 
     for toot in posts.toots {
-        println!("Posting to Mastodon: {}", toot.status);
-        if let Err(e) = mastodon.new_status(toot) {
+        println!("Posting to Mastodon: {}", toot.text);
+        if let Err(e) = mastodon.new_status(StatusBuilder::new(toot.text)) {
             println!("Error posting toot to Mastodon: {:#?}", e);
             process::exit(5);
         }
