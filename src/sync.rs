@@ -1,3 +1,4 @@
+use egg_mode::entities::MediaType;
 use egg_mode::tweet::Tweet;
 use egg_mode_text::character_count;
 use mammut::entities::status::Status;
@@ -38,7 +39,7 @@ pub fn determine_posts(mastodon_statuses: &[Status], twitter_statuses: &[Tweet])
         // The tweet is not on Mastodon yet, let's post it.
         updates.toots.push(NewStatus {
             text: tweet_unshorten_decode(tweet),
-            attachment_urls: Vec::new(),
+            attachment_urls: tweet_get_attachment_urls(tweet),
         });
     }
 
@@ -140,7 +141,10 @@ fn tweet_unshorten_decode(tweet: &Tweet) -> String {
     // directly to Mastodon.
     if let Some(media) = media {
         for attachment in media {
-            tweet_text = tweet_text.replace(&attachment.url, "");
+            // Only images are supported for now, no videos.
+            if let MediaType::Photo = attachment.media_type {
+                tweet_text = tweet_text.replace(&attachment.url, "");
+            }
         }
     }
     tweet_text = tweet_text.trim().to_string();
@@ -233,6 +237,20 @@ pub fn filter_posted_before(posts: StatusUpdates) -> StatusUpdates {
     file.write_all(json.as_bytes()).unwrap();
 
     filtered_posts
+}
+
+// Returns a list of direct links to attachments for download.
+fn tweet_get_attachment_urls(tweet: &Tweet) -> Vec<String> {
+    let mut links = Vec::new();
+    if let Some(media) = &tweet.extended_entities {
+        for attachment in &media.media {
+            // Only images are supported for now, no videos.
+            if let MediaType::Photo = attachment.media_type {
+                links.push(attachment.media_url_https.clone());
+            }
+        }
+    }
+    links
 }
 
 #[cfg(test)]
@@ -470,6 +488,31 @@ UNLISTED 🔓 ✅ Tagged people
 
         let status = &posts.toots[0];
         assert_eq!(status.text, "Verhalten bei #Hausdurchsuchung");
+        assert_eq!(
+            status.attachment_urls[0],
+            "https://pbs.twimg.com/media/Du70iGVUcAMgBp6.jpg"
+        );
+    }
+
+    // Test that attached videos are not supported right now.
+    #[test]
+    fn video_in_tweet() {
+        let mut tweet = get_twitter_status_media();
+        // Set the attachment type to video so that it is skipped.
+        let media = tweet.entities.media.as_mut().unwrap();
+        media[0].media_type = MediaType::Video;
+        let extended_media = tweet.extended_entities.as_mut().unwrap();
+        extended_media.media[0].media_type = MediaType::Video;
+        let tweets = vec![tweet];
+        let statuses = Vec::new();
+        let posts = determine_posts(&statuses, &tweets);
+
+        let status = &posts.toots[0];
+        assert_eq!(
+            status.text,
+            "Verhalten bei #Hausdurchsuchung https://t.co/AhiyYybK1m"
+        );
+        assert!(status.attachment_urls.is_empty());
     }
 
     fn get_mastodon_status() -> Status {
