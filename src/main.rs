@@ -1,5 +1,4 @@
 use egg_mode::tweet::DraftTweet;
-use mammut::status_builder::StatusBuilder;
 use mammut::{Mastodon, StatusesRequest};
 use std::fs::File;
 use std::io::prelude::*;
@@ -10,6 +9,7 @@ use crate::config::*;
 use crate::delete_favs::*;
 use crate::delete_statuses::mastodon_delete_older_statuses;
 use crate::delete_statuses::twitter_delete_older_statuses;
+use crate::post::post_to_mastodon;
 use crate::registration::mastodon_register;
 use crate::registration::twitter_register;
 use crate::sync::*;
@@ -17,6 +17,7 @@ use crate::sync::*;
 mod config;
 mod delete_favs;
 mod delete_statuses;
+mod post;
 mod registration;
 mod sync;
 
@@ -106,7 +107,7 @@ fn main() {
 
     for toot in posts.toots {
         println!("Posting to Mastodon: {}", toot.text);
-        if let Err(e) = mastodon.new_status(StatusBuilder::new(toot.text)) {
+        if let Err(e) = post_to_mastodon(&mastodon, &toot) {
             println!("Error posting toot to Mastodon: {:#?}", e);
             process::exit(5);
         }
