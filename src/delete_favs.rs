@@ -23,7 +23,7 @@ pub fn mastodon_delete_older_favs(mastodon: &Mastodon) {
         remove_dates.push(date);
         // The status could have been deleted already by the user, ignore API
         // errors in that case.
-        if let Err(error) = mastodon.unfavourite(*toot_id) {
+        if let Err(error) = mastodon.unfavourite(&format!("{}", toot_id)) {
             match error {
                 MammutError::Api(_) => {}
                 _ => Err(error).unwrap(),

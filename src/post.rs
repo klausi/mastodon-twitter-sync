@@ -19,12 +19,10 @@ pub fn post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus) -> mammut::Result
         let attachment = mastodon.media(path.into())?;
         match status.media_ids.as_mut() {
             Some(ids) => {
-                // @todo Converting String to u64 feels wrong here. The Mammut library
-                // should have String as ID type in the list of attachment IDs.
-                ids.push(attachment.id.parse().unwrap());
+                ids.push(attachment.id);
             }
             None => {
-                status.media_ids = Some(vec![attachment.id.parse().unwrap()]);
+                status.media_ids = Some(vec![attachment.id]);
             }
         }
         remove_file(tmpfile)?;
