@@ -12,7 +12,9 @@ dissolve = ">=0.2.2"
 # OpenSSL 1.1.1 support. Switch back to 0.13 once that is released.
 egg-mode = { git = "https://github.com/QuietMisdreavus/twitter-rs", rev = "8491554282f5e8a43f9144208198b756ce5ed07a" }
 egg-mode-text = ">=1.14.7"
-mammut = ">=0.12.0"
+# mammut = ">=0.12.0"
+# Switch to 0.12.1 once that is released.
+mammut = { git = "https://github.com/Aaronepower/Mammut", rev = "e4d5622f9bdef3e170e02faa3cfdc7ef507ff4ba" }
 regex = ">=0.2.2"
 reqwest = ">=0.9.5"
 serde = ">=1.0"
@@ -21,8 +23,3 @@ tokio-core = ">=0.1.10"
 tempfile = "3"
 toml = ">=0.4.5"
 serde_json = ">=1.0.6"
-
-[patch.crates-io]
-# See https://github.com/Aaronepower/Mammut/pull/45
-mammut = { git = "https://github.com/klausi/Mammut", branch = "id-strings-continued" }
-#mammut = { path = "../Mammut" }
