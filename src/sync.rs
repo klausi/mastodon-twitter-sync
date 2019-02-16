@@ -205,14 +205,7 @@ pub fn filter_posted_before(posts: StatusUpdates) -> StatusUpdates {
     }
 
     let cache_file = "post_cache.json";
-    let mut cache: HashSet<String> = match File::open(cache_file) {
-        Ok(mut file) => {
-            let mut json = String::new();
-            file.read_to_string(&mut json).unwrap();
-            serde_json::from_str(&json).unwrap()
-        }
-        Err(_) => HashSet::new(),
-    };
+    let mut cache = read_post_cache(cache_file);
     let mut filtered_posts = StatusUpdates {
         tweets: Vec::new(),
         toots: Vec::new(),
@@ -242,6 +235,30 @@ pub fn filter_posted_before(posts: StatusUpdates) -> StatusUpdates {
     file.write_all(json.as_bytes()).unwrap();
 
     filtered_posts
+}
+
+// Read the JSON encoded cache file from disk or provide en empty default cache.
+fn read_post_cache(cache_file: &str) -> HashSet<String> {
+    match File::open(cache_file) {
+        Ok(mut file) => {
+            let mut json = String::new();
+            let _ = file.read_to_string(&mut json);
+            match serde_json::from_str::<HashSet<String>>(&json) {
+                Ok(cache) => {
+                    // If the cache has more than 50 items already then empty it to not
+                    // accumulate too many items and allow posting the same text at a
+                    // later date.
+                    if cache.len() > 50 {
+                        HashSet::new()
+                    } else {
+                        cache
+                    }
+                },
+                Err(_) => HashSet::new(),
+            }
+        }
+        Err(_) => HashSet::new(),
+    }
 }
 
 // Returns a list of direct links to attachments for download.
