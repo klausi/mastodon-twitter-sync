@@ -205,7 +205,7 @@ pub fn filter_posted_before(posts: StatusUpdates) -> StatusUpdates {
     }
 
     let cache_file = "post_cache.json";
-    let cache: HashSet<String> = match File::open(cache_file) {
+    let mut cache: HashSet<String> = match File::open(cache_file) {
         Ok(mut file) => {
             let mut json = String::new();
             file.read_to_string(&mut json).unwrap();
@@ -217,13 +217,12 @@ pub fn filter_posted_before(posts: StatusUpdates) -> StatusUpdates {
         tweets: Vec::new(),
         toots: Vec::new(),
     };
-    let mut write_cache = cache.clone();
     for tweet in posts.tweets {
         if cache.contains(&tweet) {
             println!("Error: preventing double posting to Twitter: {}", tweet);
         } else {
             filtered_posts.tweets.push(tweet.clone());
-            write_cache.insert(tweet);
+            cache.insert(tweet);
         }
     }
     for toot in posts.toots {
@@ -234,11 +233,11 @@ pub fn filter_posted_before(posts: StatusUpdates) -> StatusUpdates {
             );
         } else {
             filtered_posts.toots.push(toot.clone());
-            write_cache.insert(toot.text);
+            cache.insert(toot.text);
         }
     }
 
-    let json = serde_json::to_string(&write_cache).unwrap();
+    let json = serde_json::to_string(&cache).unwrap();
     let mut file = File::create(cache_file).unwrap();
     file.write_all(json.as_bytes()).unwrap();
 
