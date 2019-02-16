@@ -9,12 +9,13 @@ chrono = ">=0.4.0"
 dissolve = ">=0.2.2"
 # egg-mode = ">=0.13"
 # There is no egg-mode release yet for the Hyper upgrade which we need for
-# OpenSSL 1.1.1 support. Switch back to 0.13 once that is released.
-egg-mode = { git = "https://github.com/QuietMisdreavus/twitter-rs", rev = "8491554282f5e8a43f9144208198b756ce5ed07a" }
+# OpenSSL 1.1.1 support. Same for image alt text.
+# Switch back to 0.13 once that is released?
+egg-mode = { git = "https://github.com/klausi/twitter-rs", rev = "20136084ac707a4c6ee8ed9d17d625f4792b56c2" }
 egg-mode-text = ">=1.14.7"
 # mammut = ">=0.12.0"
 # Switch to 0.12.1 once that is released.
-mammut = { git = "https://github.com/Aaronepower/Mammut", rev = "e4d5622f9bdef3e170e02faa3cfdc7ef507ff4ba" }
+mammut = { git = "https://github.com/klausi/Mammut", rev = "2ed8d6b9a45df8b111f644294cc9c1a9381fff6a" }
 regex = ">=0.2.2"
 reqwest = ">=0.9.5"
 serde = ">=1.0"

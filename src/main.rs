@@ -107,7 +107,7 @@ fn main() {
 
     for toot in posts.toots {
         println!("Posting to Mastodon: {}", toot.text);
-        if let Err(e) = post_to_mastodon(&mastodon, &toot) {
+        if let Err(e) = post_to_mastodon(&mastodon, toot) {
             println!("Error posting toot to Mastodon: {:#?}", e);
             process::exit(5);
         }

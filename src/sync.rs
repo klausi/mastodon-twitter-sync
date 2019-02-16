@@ -20,7 +20,13 @@ pub struct StatusUpdates {
 #[derive(Debug, Clone)]
 pub struct NewStatus {
     pub text: String,
-    pub attachment_urls: Vec<String>,
+    pub attachments: Vec<NewMedia>,
+}
+
+#[derive(Debug, Clone)]
+pub struct NewMedia {
+    pub attachment_url: String,
+    pub alt_text: Option<String>,
 }
 
 pub fn determine_posts(mastodon_statuses: &[Status], twitter_statuses: &[Tweet]) -> StatusUpdates {
@@ -39,7 +45,7 @@ pub fn determine_posts(mastodon_statuses: &[Status], twitter_statuses: &[Tweet])
         // The tweet is not on Mastodon yet, let's post it.
         updates.toots.push(NewStatus {
             text: tweet_unshorten_decode(tweet),
-            attachment_urls: tweet_get_attachment_urls(tweet),
+            attachments: tweet_get_attachments(tweet),
         });
     }
 
@@ -122,7 +128,7 @@ fn tweet_unshorten_decode(tweet: &Tweet) -> String {
         None => (
             tweet.text.clone(),
             &tweet.entities.urls,
-            &tweet.entities.media,
+            &tweet.extended_entities,
         ),
         Some(ref retweet) => (
             format!(
@@ -131,7 +137,7 @@ fn tweet_unshorten_decode(tweet: &Tweet) -> String {
                 retweet.text
             ),
             &retweet.entities.urls,
-            &retweet.entities.media,
+            &retweet.extended_entities,
         ),
     };
     for url in urls {
@@ -140,7 +146,7 @@ fn tweet_unshorten_decode(tweet: &Tweet) -> String {
     // Remove the last media link if there is one, we will upload attachments
     // directly to Mastodon.
     if let Some(media) = media {
-        for attachment in media {
+        for attachment in &media.media {
             // Only images are supported for now, no videos.
             if let MediaType::Photo = attachment.media_type {
                 tweet_text = tweet_text.replace(&attachment.url, "");
@@ -240,13 +246,16 @@ pub fn filter_posted_before(posts: StatusUpdates) -> StatusUpdates {
 }
 
 // Returns a list of direct links to attachments for download.
-fn tweet_get_attachment_urls(tweet: &Tweet) -> Vec<String> {
+fn tweet_get_attachments(tweet: &Tweet) -> Vec<NewMedia> {
     let mut links = Vec::new();
     if let Some(media) = &tweet.extended_entities {
         for attachment in &media.media {
             // Only images are supported for now, no videos.
             if let MediaType::Photo = attachment.media_type {
-                links.push(attachment.media_url_https.clone());
+                links.push(NewMedia {
+                    attachment_url: attachment.media_url_https.clone(),
+                    alt_text: attachment.ext_alt_text.clone(),
+                });
             }
         }
     }
@@ -489,8 +498,12 @@ UNLISTED 🔓 ✅ Tagged people
         let status = &posts.toots[0];
         assert_eq!(status.text, "Verhalten bei #Hausdurchsuchung");
         assert_eq!(
-            status.attachment_urls[0],
+            status.attachments[0].attachment_url,
             "https://pbs.twimg.com/media/Du70iGVUcAMgBp6.jpg"
+        );
+        assert_eq!(
+            status.attachments[0].alt_text,
+            Some("Accessibility text".to_string())
         );
     }
 
@@ -512,7 +525,7 @@ UNLISTED 🔓 ✅ Tagged people
             status.text,
             "Verhalten bei #Hausdurchsuchung https://t.co/AhiyYybK1m"
         );
-        assert!(status.attachment_urls.is_empty());
+        assert!(status.attachments.is_empty());
     }
 
     fn get_mastodon_status() -> Status {
@@ -616,6 +629,7 @@ UNLISTED 🔓 ✅ Tagged people
                     media_type: MediaType::Photo,
                     url: "https://t.co/AhiyYybK1m".to_string(),
                     video_info: None,
+                    ext_alt_text: Some("Accessibility text".to_string()),
                 }]),
             },
             extended_entities: Some(ExtendedTweetEntities {
@@ -653,6 +667,7 @@ UNLISTED 🔓 ✅ Tagged people
                     media_type: MediaType::Photo,
                     url: "https://t.co/AhiyYybK1m".to_string(),
                     video_info: None,
+                    ext_alt_text: Some("Accessibility text".to_string()),
                 }],
             }),
             favorite_count: 0,
