@@ -11,7 +11,7 @@ use std::io::prelude::*;
 // Mastodon (toots).
 #[derive(Debug, Clone)]
 pub struct StatusUpdates {
-    pub tweets: Vec<String>,
+    pub tweets: Vec<NewStatus>,
     pub toots: Vec<NewStatus>,
 }
 
@@ -64,7 +64,10 @@ pub fn determine_posts(mastodon_statuses: &[Status], twitter_statuses: &[Tweet])
             }
         }
         // The toot is not on Twitter yet, let's post it.
-        updates.tweets.push(post);
+        updates.tweets.push(NewStatus {
+            text: post,
+            attachments: toot_get_attachments(toot),
+        });
     }
     updates
 }
@@ -211,11 +214,11 @@ pub fn filter_posted_before(posts: StatusUpdates) -> StatusUpdates {
         toots: Vec::new(),
     };
     for tweet in posts.tweets {
-        if cache.contains(&tweet) {
-            println!("Error: preventing double posting to Twitter: {}", tweet);
+        if cache.contains(&tweet.text) {
+            println!("Error: preventing double posting to Twitter: {}", tweet.text);
         } else {
             filtered_posts.tweets.push(tweet.clone());
-            cache.insert(tweet);
+            cache.insert(tweet.text);
         }
     }
     for toot in posts.toots {
@@ -273,6 +276,21 @@ fn tweet_get_attachments(tweet: &Tweet) -> Vec<NewMedia> {
                     alt_text: attachment.ext_alt_text.clone(),
                 });
             }
+        }
+    }
+    links
+}
+
+// Returns a list of direct links to attachments for download.
+fn toot_get_attachments(toot: &Status) -> Vec<NewMedia> {
+    let mut links = Vec::new();
+    for attachment in &toot.media_attachments {
+        // Only images are supported for now, no videos.
+        if let mammut::entities::attachment::MediaType::Image = attachment.media_type {
+            links.push(NewMedia {
+                attachment_url: attachment.url.clone(),
+                alt_text: attachment.description.clone(),
+            });
         }
     }
     links
@@ -386,7 +404,7 @@ UNLISTED 🔓 ✅ Tagged people
         let mut status = get_mastodon_status();
         status.content = "<p>You &amp; me!</p>".to_string();
         let posts = determine_posts(&vec![status], &Vec::new());
-        assert_eq!(posts.tweets[0], "You & me!");
+        assert_eq!(posts.tweets[0].text, "You & me!");
     }
 
     // Test that Twitter status text is posted HTML entity decoded to Mastodon.
@@ -410,7 +428,7 @@ UNLISTED 🔓 ✅ Tagged people
         status.reblogged = Some(true);
 
         let posts = determine_posts(&vec![status], &Vec::new());
-        assert_eq!(posts.tweets[0], "RT example: Some example toooot!");
+        assert_eq!(posts.tweets[0].text, "RT example: Some example toooot!");
     }
 
     // Test that the old "RT @username" prefix is considered equal to "RT
@@ -473,7 +491,7 @@ UNLISTED 🔓 ✅ Tagged people
         let statuses = vec![status];
         let posts = determine_posts(&statuses, &tweets);
         assert!(posts.toots.is_empty());
-        assert_eq!(posts.tweets[0], "Österreich");
+        assert_eq!(posts.tweets[0].text, "Österreich");
     }
 
     // Test that posting something looking like a URL/domain is considered
@@ -544,9 +562,37 @@ UNLISTED 🔓 ✅ Tagged people
         assert!(status.attachments.is_empty());
     }
 
+    // Test that if there are pictures in a toot that they are attached as
+    // media files to the tweet.
+    #[test]
+    fn pictures_in_toot() {
+        let statuses = vec![get_mastodon_status_media()];
+        let tweets = Vec::new();
+        let posts = determine_posts(&statuses, &tweets);
+
+        let tweet = &posts.tweets[0];
+        assert_eq!(tweet.text, "test image");
+        assert_eq!(
+            tweet.attachments[0].attachment_url,
+            "https://files.mastodon.social/media_attachments/files/011/514/042/original/e046a3fb6a71a07b.jpg"
+        );
+        assert_eq!(
+            tweet.attachments[0].alt_text,
+            Some("Test image from a TV screen".to_string())
+        );
+    }
+
     fn get_mastodon_status() -> Status {
+        read_mastodon_status("src/mastodon_status.json")
+    }
+
+    fn get_mastodon_status_media() -> Status {
+        read_mastodon_status("src/mastodon_attach.json")
+    }
+
+    fn read_mastodon_status(file_name: &str) -> Status {
         let json = {
-            let mut file = File::open("src/mastodon_status.json").unwrap();
+            let mut file = File::open(file_name).unwrap();
             let mut ret = String::new();
             file.read_to_string(&mut ret).unwrap();
             ret

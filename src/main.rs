@@ -114,8 +114,8 @@ fn main() {
     }
 
     for tweet in posts.tweets {
-        println!("Posting to Twitter: {}", tweet);
-        if let Err(e) = core.run(DraftTweet::new(tweet).send(&token)) {
+        println!("Posting to Twitter: {}", tweet.text);
+        if let Err(e) = core.run(DraftTweet::new(tweet.text).send(&token)) {
             println!("Error posting tweet to Twitter: {:#?}", e);
             process::exit(6);
         }
