@@ -1,4 +1,3 @@
-use egg_mode::tweet::DraftTweet;
 use mammut::{Mastodon, StatusesRequest};
 use std::fs::File;
 use std::io::prelude::*;
@@ -9,7 +8,7 @@ use crate::config::*;
 use crate::delete_favs::*;
 use crate::delete_statuses::mastodon_delete_older_statuses;
 use crate::delete_statuses::twitter_delete_older_statuses;
-use crate::post::post_to_mastodon;
+use crate::post::*;
 use crate::registration::mastodon_register;
 use crate::registration::twitter_register;
 use crate::sync::*;
@@ -115,7 +114,7 @@ fn main() {
 
     for tweet in posts.tweets {
         println!("Posting to Twitter: {}", tweet.text);
-        if let Err(e) = core.run(DraftTweet::new(tweet.text).send(&token)) {
+        if let Err(e) = post_to_twitter(&token, tweet) {
             println!("Error posting tweet to Twitter: {:#?}", e);
             process::exit(6);
         }

@@ -13,14 +13,17 @@ dissolve = ">=0.2.2"
 # Switch back to 0.13 once that is released?
 egg-mode = { git = "https://github.com/klausi/twitter-rs", rev = "20136084ac707a4c6ee8ed9d17d625f4792b56c2" }
 egg-mode-text = ">=1.14.7"
+failure = ">=0.1.5"
 # mammut = ">=0.12.0"
 # Switch to 0.12.1 once that is released.
 mammut = { git = "https://github.com/klausi/Mammut", rev = "2ed8d6b9a45df8b111f644294cc9c1a9381fff6a" }
+mime = ">=0.3.13"
 regex = ">=0.2.2"
 reqwest = ">=0.9.5"
 serde = ">=1.0"
 serde_derive = ">=1.0.19"
 tokio-core = ">=0.1.10"
+tokio = ">=0.1.15"
 tempfile = "3"
 toml = ">=0.4.5"
 serde_json = ">=1.0.6"

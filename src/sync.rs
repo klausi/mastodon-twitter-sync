@@ -215,7 +215,10 @@ pub fn filter_posted_before(posts: StatusUpdates) -> StatusUpdates {
     };
     for tweet in posts.tweets {
         if cache.contains(&tweet.text) {
-            println!("Error: preventing double posting to Twitter: {}", tweet.text);
+            println!(
+                "Error: preventing double posting to Twitter: {}",
+                tweet.text
+            );
         } else {
             filtered_posts.tweets.push(tweet.clone());
             cache.insert(tweet.text);
@@ -256,7 +259,7 @@ fn read_post_cache(cache_file: &str) -> HashSet<String> {
                     } else {
                         cache
                     }
-                },
+                }
                 Err(_) => HashSet::new(),
             }
         }
