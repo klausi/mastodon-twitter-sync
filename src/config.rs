@@ -1,6 +1,6 @@
 use chrono::prelude::*;
 use mammut::Data;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs::remove_file;
 use std::fs::File;

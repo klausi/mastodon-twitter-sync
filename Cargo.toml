@@ -1,7 +1,7 @@
 [package]
 name = "mastodon-twitter-sync"
-version = "1.1.0"
-authors = ["Klaus Purer <klaus.purer@gmail.com>"]
+version = "1.2.0"
+authors = ["Klaus Purer <klaus.purer@protonmail.ch>"]
 edition = "2018"
 
 [dependencies]
@@ -20,8 +20,7 @@ mammut = { git = "https://github.com/klausi/Mammut", rev = "2ed8d6b9a45df8b111f6
 mime = ">=0.3.13"
 regex = ">=0.2.2"
 reqwest = ">=0.9.5"
-serde = ">=1.0"
-serde_derive = ">=1.0.19"
+serde = { version = ">=1.0", features = ["derive"] }
 tokio = ">=0.1.15"
 tempfile = "3"
 toml = ">=0.4.5"
