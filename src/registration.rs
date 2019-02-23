@@ -26,7 +26,7 @@ pub fn mastodon_register() -> Mastodon {
 }
 
 pub fn twitter_register() -> TwitterConfig {
-    println!("Go to https://apps.twitter.com/app/new to create a new Twitter app.");
+    println!("Go to https://developer.twitter.com/en/apps/create to create a new Twitter app.");
     println!("Name: Mastodon Twitter Sync");
     println!("Description: Synchronizes Tweets and Toots");
     println!("Website: https://github.com/klausi/mastodon-twitter-sync");
