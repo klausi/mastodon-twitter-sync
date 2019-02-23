@@ -2,7 +2,7 @@ use mammut::{Mastodon, StatusesRequest};
 use std::fs::File;
 use std::io::prelude::*;
 use std::process;
-use tokio_core::reactor::Core;
+use tokio::runtime::current_thread::block_on_all;
 
 use crate::config::*;
 use crate::delete_favs::*;
@@ -76,11 +76,10 @@ fn main() {
         access: access_token,
     };
 
-    let mut core = Core::new().unwrap();
     let timeline = egg_mode::tweet::user_timeline(config.twitter.user_id, false, true, &token)
         .with_page_size(50);
 
-    let (timeline, first_tweets) = match core.run(timeline.start()) {
+    let (timeline, first_tweets) = match block_on_all(timeline.start()) {
         Ok(tweets) => tweets,
         Err(e) => {
             println!("Error fetching tweets from Twitter: {:#?}", e);
@@ -91,7 +90,7 @@ fn main() {
     // We might have only one tweet because of filtering out reply tweets. Fetch
     // some more tweets to make sure we have enough for comparing.
     if tweets.len() < 50 {
-        let (_, mut next_tweets) = match core.run(timeline.older(None)) {
+        let (_, mut next_tweets) = match block_on_all(timeline.older(None)) {
             Ok(tweets) => tweets,
             Err(e) => {
                 println!("Error fetching older tweets from Twitter: {:#?}", e);

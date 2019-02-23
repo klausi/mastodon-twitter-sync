@@ -1,7 +1,7 @@
 use mammut::apps::{AppBuilder, Scopes};
 use mammut::{Mastodon, Registration};
 use std::io;
-use tokio_core::reactor::Core;
+use tokio::runtime::current_thread::block_on_all;
 
 use super::*;
 
@@ -34,21 +34,16 @@ pub fn twitter_register() -> TwitterConfig {
     let consumer_key = console_input("Paste your consumer key");
     let consumer_secret = console_input("Paste your consumer secret");
 
-    let mut core = Core::new().unwrap();
-
     let con_token = egg_mode::KeyPair::new(consumer_key.clone(), consumer_secret.clone());
-    let request_token = core
-        .run(egg_mode::request_token(&con_token, "oob"))
-        .unwrap();
+    let request_token = block_on_all(egg_mode::request_token(&con_token, "oob")).unwrap();
     println!(
         "Click this link to authorize on Twitter: {}",
         egg_mode::authorize_url(&request_token)
     );
     let pin = console_input("Paste your PIN");
 
-    let (token, user_id, screen_name) = core
-        .run(egg_mode::access_token(con_token, &request_token, pin))
-        .unwrap();
+    let (token, user_id, screen_name) =
+        block_on_all(egg_mode::access_token(con_token, &request_token, pin)).unwrap();
 
     match token {
         egg_mode::Token::Access {

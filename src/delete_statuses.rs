@@ -7,7 +7,7 @@ use mammut::Error as MammutError;
 use mammut::Mastodon;
 use std::collections::BTreeMap;
 use std::str::FromStr;
-use tokio_core::reactor::Core;
+use tokio::runtime::current_thread::block_on_all;
 
 use crate::config::*;
 
@@ -78,14 +78,13 @@ pub fn twitter_delete_older_statuses(user_id: u64, token: &egg_mode::Token) {
     // keyed by their dates.
     let cache_file = "twitter_cache.json";
     let dates = twitter_load_tweet_dates(user_id, token, cache_file);
-    let mut core = Core::new().unwrap();
     let mut remove_dates = Vec::new();
     let three_months_ago = Utc::now() - Duration::days(90);
     for (date, tweet_id) in dates.range(..three_months_ago) {
         println!("Deleting tweet {} from {}", tweet_id, date);
         remove_dates.push(date);
         let deletion = egg_mode::tweet::delete(*tweet_id, token);
-        let delete_result = core.run(deletion);
+        let delete_result = block_on_all(deletion);
         match delete_result {
             // The status could have been deleted already by the user, ignore API
             // errors in that case.
@@ -121,14 +120,13 @@ fn twitter_fetch_tweet_dates(
     token: &egg_mode::Token,
     cache_file: &str,
 ) -> BTreeMap<DateTime<Utc>, u64> {
-    let mut core = Core::new().unwrap();
     // Try to fetch as many tweets as possible at once, Twitter API docs say
     // that is 200.
     let timeline = egg_mode::tweet::user_timeline(user_id, true, true, token).with_page_size(200);
     let mut max_id = None;
     let mut dates = BTreeMap::new();
     loop {
-        let tweets = core.run(timeline.call(None, max_id)).unwrap();
+        let tweets = block_on_all(timeline.call(None, max_id)).unwrap();
         if tweets.is_empty() {
             break;
         }
