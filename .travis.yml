@@ -1,12 +1,11 @@
 language: rust
 cache: cargo
-dist: trusty
+dist: xenial
 os:
   - linux
   - osx
 sudo: false
 
-# Run builds for all the supported trains
+# Testing on stable Rust is enough, we don't need nightly.
 rust:
-  - nightly
   - stable
