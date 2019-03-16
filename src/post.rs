@@ -4,6 +4,7 @@ use egg_mode::tweet::DraftTweet;
 use egg_mode::tweet::Tweet;
 use egg_mode::Token;
 use mammut::entities::status::Status;
+use mammut::media_builder::MediaBuilder;
 use mammut::status_builder::StatusBuilder;
 use mammut::Mastodon;
 use reqwest::header::CONTENT_TYPE;
@@ -25,7 +26,11 @@ pub fn post_to_mastodon(mastodon: &Mastodon, toot: NewStatus) -> mammut::Result<
         let path = tmpfile.path().to_str().unwrap().to_string();
         let attachment = match attachment.alt_text {
             None => mastodon.media(path.into())?,
-            Some(description) => mastodon.media_description(path.into(), description.into())?,
+            Some(description) => mastodon.media(MediaBuilder {
+                file: path.into(),
+                description: Some(description.into()),
+                focus: None,
+            })?,
         };
 
         match status.media_ids.as_mut() {
