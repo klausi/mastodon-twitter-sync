@@ -144,7 +144,9 @@ fn tweet_unshorten_decode(tweet: &Tweet) -> String {
         ),
     };
     for url in urls {
-        tweet_text = tweet_text.replace(&url.url, &url.expanded_url);
+        if let Some(expanded_url) = &url.expanded_url {
+            tweet_text = tweet_text.replace(&url.url, &expanded_url);
+        }
     }
     // Remove the last media link if there is one, we will upload attachments
     // directly to Mastodon.

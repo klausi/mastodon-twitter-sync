@@ -264,7 +264,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "egg-mode"
 version = "0.12.0"
-source = "git+https://github.com/klausi/twitter-rs?rev=20136084ac707a4c6ee8ed9d17d625f4792b56c2#20136084ac707a4c6ee8ed9d17d625f4792b56c2"
+source = "git+https://github.com/klausi/twitter-rs?rev=6d7b3bf39167facc9e26c932b1d3ddd4f178e2c0#6d7b3bf39167facc9e26c932b1d3ddd4f178e2c0"
 dependencies = [
  "base64 0.9.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -644,7 +644,7 @@ version = "1.2.0"
 dependencies = [
  "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "dissolve 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "egg-mode 0.12.0 (git+https://github.com/klausi/twitter-rs?rev=20136084ac707a4c6ee8ed9d17d625f4792b56c2)",
+ "egg-mode 0.12.0 (git+https://github.com/klausi/twitter-rs?rev=6d7b3bf39167facc9e26c932b1d3ddd4f178e2c0)",
  "egg-mode-text 1.14.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "mammut 0.12.0 (git+https://github.com/klausi/Mammut?rev=b900e4aafdadc82ab2e6148d66b04199bc595e97)",
@@ -1793,7 +1793,7 @@ dependencies = [
 "checksum dissolve 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "898542be4716d992082c8e4fc331b792d626cfa71cb2b4790f828b9a8f921a90"
 "checksum doc-comment 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "a1993465d2012139530d131b90240671d28da3d3c7a3dee807f9306807f83492"
 "checksum dtoa 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)" = "6d301140eb411af13d3115f9a562c85cc6b541ade9dfa314132244aaee7489dd"
-"checksum egg-mode 0.12.0 (git+https://github.com/klausi/twitter-rs?rev=20136084ac707a4c6ee8ed9d17d625f4792b56c2)" = "<none>"
+"checksum egg-mode 0.12.0 (git+https://github.com/klausi/twitter-rs?rev=6d7b3bf39167facc9e26c932b1d3ddd4f178e2c0)" = "<none>"
 "checksum egg-mode-text 1.14.7 (registry+https://github.com/rust-lang/crates.io-index)" = "63b1e56fd3cc20beed6947ebf1b774e20507ab44d5e73b0a4fbc790e1b2b4dcb"
 "checksum encoding_rs 0.8.17 (registry+https://github.com/rust-lang/crates.io-index)" = "4155785c79f2f6701f185eb2e6b4caf0555ec03477cb4c70db67b465311620ed"
 "checksum failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "795bd83d3abeb9220f257e597aa0080a508b27533824adf336529648f6abf7e2"
