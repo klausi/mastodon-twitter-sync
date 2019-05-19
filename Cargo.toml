@@ -16,7 +16,7 @@ egg-mode-text = ">=1.14.7"
 failure = ">=0.1.5"
 # mammut = ">=0.12.0"
 # Switch to 0.12.1 once that is released.
-mammut = { git = "https://github.com/Aaronepower/Mammut", rev = "9cb9cd8ce4b35a845e63aa715e8187fa51a2950d" }
+mammut = { git = "https://github.com/klausi/Mammut", rev = "b900e4aafdadc82ab2e6148d66b04199bc595e97" }
 mime = ">=0.3.13"
 regex = ">=0.2.2"
 reqwest = ">=0.9.5"
