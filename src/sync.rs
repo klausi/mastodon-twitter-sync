@@ -1,4 +1,3 @@
-use egg_mode::entities::MediaType;
 use egg_mode::tweet::Tweet;
 use egg_mode_text::character_count;
 use mammut::entities::status::Status;
@@ -143,6 +142,7 @@ fn tweet_unshorten_decode(tweet: &Tweet) -> String {
             &retweet.extended_entities,
         ),
     };
+    // Replace t.co URLs with the real links in tweets.
     for url in urls {
         if let Some(expanded_url) = &url.expanded_url {
             tweet_text = tweet_text.replace(&url.url, &expanded_url);
@@ -152,10 +152,7 @@ fn tweet_unshorten_decode(tweet: &Tweet) -> String {
     // directly to Mastodon.
     if let Some(media) = media {
         for attachment in &media.media {
-            // Only images are supported for now, no videos.
-            if let MediaType::Photo = attachment.media_type {
-                tweet_text = tweet_text.replace(&attachment.url, "");
-            }
+            tweet_text = tweet_text.replace(&attachment.url, "");
         }
     }
     tweet_text = tweet_text.trim().to_string();
@@ -274,12 +271,30 @@ fn tweet_get_attachments(tweet: &Tweet) -> Vec<NewMedia> {
     let mut links = Vec::new();
     if let Some(media) = &tweet.extended_entities {
         for attachment in &media.media {
-            // Only images are supported for now, no videos.
-            if let MediaType::Photo = attachment.media_type {
-                links.push(NewMedia {
-                    attachment_url: attachment.media_url_https.clone(),
-                    alt_text: attachment.ext_alt_text.clone(),
-                });
+            match &attachment.video_info {
+                Some(video_info) => {
+                    let mut bitrate = 0;
+                    let mut media_url = "".to_string();
+                    // Use the video variant with the highest bitrate.
+                    for variant in &video_info.variants {
+                        if let Some(video_bitrate) = variant.bitrate {
+                            if video_bitrate > bitrate {
+                                bitrate = video_bitrate;
+                                media_url = variant.url.clone();
+                            }
+                        }
+                    }
+                    links.push(NewMedia {
+                        attachment_url: media_url,
+                        alt_text: attachment.ext_alt_text.clone(),
+                    });
+                }
+                None => {
+                    links.push(NewMedia {
+                        attachment_url: attachment.media_url_https.clone(),
+                        alt_text: attachment.ext_alt_text.clone(),
+                    });
+                }
             }
         }
     }
@@ -307,6 +322,8 @@ mod tests {
     use super::*;
     use chrono::Utc;
     use egg_mode::entities::ResizeMode::{Crop, Fit};
+    use egg_mode::entities::VideoInfo;
+    use egg_mode::entities::VideoVariant;
     use egg_mode::entities::{
         HashtagEntity, MediaEntity, MediaSize, MediaSizes, MediaType, UrlEntity,
     };
@@ -546,25 +563,24 @@ UNLISTED 🔓 ✅ Tagged people
         );
     }
 
-    // Test that attached videos are not supported right now.
+    // Test that attached videos are posted directly to Mastodon.
     #[test]
     fn video_in_tweet() {
-        let mut tweet = get_twitter_status_media();
-        // Set the attachment type to video so that it is skipped.
-        let media = tweet.entities.media.as_mut().unwrap();
-        media[0].media_type = MediaType::Video;
-        let extended_media = tweet.extended_entities.as_mut().unwrap();
-        extended_media.media[0].media_type = MediaType::Video;
+        let tweet = get_twitter_status_video();
         let tweets = vec![tweet];
         let statuses = Vec::new();
         let posts = determine_posts(&statuses, &tweets);
 
         let status = &posts.toots[0];
+        assert_eq!(status.text, "Verhalten bei #Hausdurchsuchung");
         assert_eq!(
-            status.text,
-            "Verhalten bei #Hausdurchsuchung https://t.co/AhiyYybK1m"
+            status.attachments[0].attachment_url,
+            "https://video.twimg.com/ext_tw_video/869317980307415040/pu/vid/720x1280/octt5pFbISkef8RB.mp4"
         );
-        assert!(status.attachments.is_empty());
+        assert_eq!(
+            status.attachments[0].alt_text,
+            Some("Accessibility text".to_string())
+        );
     }
 
     // Test that if there are pictures in a toot that they are attached as
@@ -763,6 +779,42 @@ UNLISTED 🔓 ✅ Tagged people
             withheld_in_countries: None,
             withheld_scope: None,
         }
+    }
+
+    fn get_twitter_status_video() -> Tweet {
+        // Reuse the media tweet and change it to video content.
+        let mut tweet = get_twitter_status_media();
+        // Set the attachment type to video.
+        let media = tweet.entities.media.as_mut().unwrap();
+        media[0].media_type = MediaType::Video;
+        let extended_media = tweet.extended_entities.as_mut().unwrap();
+        extended_media.media[0].media_type = MediaType::Video;
+
+        extended_media.media[0].video_info = Some(VideoInfo {
+            aspect_ratio: (9, 16),
+            duration_millis: Some(10704),
+            variants: vec![VideoVariant {
+                bitrate: Some(320000),
+                content_type: "video/mp4".parse().unwrap(),
+                url: "https://video.twimg.com/ext_tw_video/869317980307415040/pu/vid/180x320/FMei8yCw7yc_Z7e-.mp4".to_string(),
+            },
+            VideoVariant {
+                bitrate: Some(2176000),
+                content_type: "video/mp4".parse().unwrap(),
+                url: "https://video.twimg.com/ext_tw_video/869317980307415040/pu/vid/720x1280/octt5pFbISkef8RB.mp4".to_string(),
+            },
+            VideoVariant {
+                bitrate: Some(832000),
+                content_type: "video/mp4".parse().unwrap(),
+                url: "https://video.twimg.com/ext_tw_video/869317980307415040/pu/vid/360x640/2OmqK74SQ9jNX8mZ.mp4".to_string(),
+            },
+            VideoVariant {
+                bitrate: None,
+                content_type: "application/x-mpegURL".parse().unwrap(),
+                url: "https://video.twimg.com/ext_tw_video/869317980307415040/pu/pl/wcJQJ2nxiFU4ZZng.m3u8".to_string(),
+            }],
+        });
+        tweet
     }
 
 }
