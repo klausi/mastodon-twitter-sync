@@ -515,7 +515,7 @@ UNLISTED 🔓 ✅ Tagged people
             symbols: Vec::new(),
             urls: vec![UrlEntity {
                 display_url: "bofa.lol".to_string(),
-                expanded_url: "http://bofa.lol".to_string(),
+                expanded_url: Some("http://bofa.lol".to_string()),
                 range: (21, 44),
                 url: "https://t.co/OxEvHBajwd".to_string(),
             }],
