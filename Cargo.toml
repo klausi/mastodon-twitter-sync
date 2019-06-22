@@ -7,13 +7,7 @@ edition = "2018"
 [dependencies]
 chrono = ">=0.4.0"
 dissolve = ">=0.2.2"
-# egg-mode = ">=0.13"
-# There is no egg-mode release yet for the Hyper upgrade which we need for
-# OpenSSL 1.1.1 support. Same for image alt text.
-# Switch back to 0.13 once that is released?
-# Nullable expand_url https://github.com/QuietMisdreavus/twitter-rs/pull/56
-# Nullable lang property https://github.com/QuietMisdreavus/twitter-rs/pull/57
-egg-mode = { git = "https://github.com/klausi/twitter-rs", rev = "5f4e3ca092796e8d6362ad0eb133940071ae3ada" }
+egg-mode = ">=0.13"
 egg-mode-text = ">=1.14.7"
 failure = ">=0.1.5"
 # mammut = ">=0.12.0"
