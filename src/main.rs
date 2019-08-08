@@ -1,4 +1,5 @@
 use mammut::{Mastodon, StatusesRequest};
+use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
 use std::process;
@@ -10,6 +11,7 @@ use crate::config::*;
 use crate::delete_favs::*;
 use crate::delete_statuses::mastodon_delete_older_statuses;
 use crate::delete_statuses::twitter_delete_older_statuses;
+use crate::errors::*;
 use crate::post::*;
 use crate::registration::mastodon_register;
 use crate::registration::twitter_register;
@@ -19,18 +21,21 @@ mod args;
 mod config;
 mod delete_favs;
 mod delete_statuses;
+mod errors;
 mod post;
 mod registration;
 mod sync;
 
-fn main() {
+fn run() -> Result<()> {
     let args = Args::from_args();
 
-    let config = match File::open(&args.config) {
-        Ok(f) => config_load(f),
+    let config = match fs::read_to_string(&args.config) {
+        Ok(config) => config_load(&config)?,
         Err(_) => {
-            let mastodon = mastodon_register();
-            let twitter_config = twitter_register();
+            let mastodon = mastodon_register()
+                .context("Failed to setup mastodon account")?;
+            let twitter_config = twitter_register()
+                .context("Failed to setup twitter account")?;
             let config = Config {
                 mastodon: MastodonConfig {
                     app: (*mastodon).clone(),
@@ -43,9 +48,10 @@ fn main() {
             };
 
             // Save config for using on the next run.
-            let toml = toml::to_string(&config).unwrap();
-            let mut file = File::create(&args.config).unwrap();
-            file.write_all(toml.as_bytes()).unwrap();
+            let toml = toml::to_string(&config)?;
+            let mut file = File::create(&args.config)
+                .context("Failed to create config file")?;
+            file.write_all(toml.as_bytes())?;
 
             config
         }
@@ -106,7 +112,7 @@ fn main() {
     }
     let mut posts = determine_posts(&mastodon_statuses, &tweets);
 
-    posts = filter_posted_before(posts);
+    posts = filter_posted_before(posts)?;
 
     for toot in posts.toots {
         println!("Posting to Mastodon: {}", toot.text);
@@ -130,17 +136,33 @@ fn main() {
 
     // Delete old mastodon statuses if that option is enabled.
     if config.mastodon.delete_older_statuses {
-        mastodon_delete_older_statuses(&mastodon, &account);
+        mastodon_delete_older_statuses(&mastodon, &account)
+            .context("Failed to delete old mastodon statuses")?;
     }
     if config.twitter.delete_older_statuses {
-        twitter_delete_older_statuses(config.twitter.user_id, &token);
+        twitter_delete_older_statuses(config.twitter.user_id, &token)
+            .context("Failed to delete old twitter statuses")?;
     }
 
     // Delete old mastodon favourites if that option is enabled.
     if config.mastodon.delete_older_favs {
-        mastodon_delete_older_favs(&mastodon);
+        mastodon_delete_older_favs(&mastodon)
+            .context("Failed to delete old mastodon favs")?;
     }
     if config.twitter.delete_older_favs {
-        twitter_delete_older_favs(config.twitter.user_id, &token);
+        twitter_delete_older_favs(config.twitter.user_id, &token)
+            .context("Failed to delete old twitter favs")?;
+    }
+
+    Ok(())
+}
+
+fn main() {
+    if let Err(err) = run() {
+        eprintln!("Error: {}", err);
+        for cause in err.iter_chain().skip(1) {
+            eprintln!("Because: {}", cause);
+        }
+        std::process::exit(1);
     }
 }

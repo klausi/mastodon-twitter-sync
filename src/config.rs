@@ -1,15 +1,15 @@
 use chrono::prelude::*;
+use crate::errors::*;
 use mammut::Data;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::fs;
 use std::fs::remove_file;
-use std::fs::File;
-use std::io::prelude::*;
 
-pub fn config_load(mut file: File) -> Config {
-    let mut config = String::new();
-    file.read_to_string(&mut config).unwrap();
-    toml::from_str(&config).unwrap()
+#[inline]
+pub fn config_load(config: &str) -> Result<Config> {
+    toml::from_str(config)
+        .map_err(Error::from)
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -44,22 +44,19 @@ fn config_false_default() -> bool {
     false
 }
 
-pub fn load_dates_from_cache(cache_file: &str) -> Option<BTreeMap<DateTime<Utc>, u64>> {
-    let cache = match File::open(cache_file) {
-        Ok(mut file) => {
-            let mut json = String::new();
-            file.read_to_string(&mut json).unwrap();
-            serde_json::from_str(&json).unwrap()
-        }
-        Err(_) => return None,
-    };
-    Some(cache)
+pub fn load_dates_from_cache(cache_file: &str) -> Result<Option<BTreeMap<DateTime<Utc>, u64>>> {
+    if let Ok(json) = fs::read_to_string(cache_file) {
+        let cache = serde_json::from_str(&json)?;
+        Ok(Some(cache))
+    } else {
+        Ok(None)
+    }
 }
 
-pub fn save_dates_to_cache(cache_file: &str, dates: &BTreeMap<DateTime<Utc>, u64>) {
-    let json = serde_json::to_string(&dates).unwrap();
-    let mut file = File::create(cache_file).unwrap();
-    file.write_all(json.as_bytes()).unwrap();
+pub fn save_dates_to_cache(cache_file: &str, dates: &BTreeMap<DateTime<Utc>, u64>) -> Result<()> {
+    let json = serde_json::to_string(&dates)?;
+    fs::write(cache_file, json.as_bytes())?;
+    Ok(())
 }
 
 // Delete a list of dates from the given cache of dates and write the cache to
@@ -68,9 +65,9 @@ pub fn remove_dates_from_cache(
     remove_dates: Vec<&DateTime<Utc>>,
     cached_dates: &BTreeMap<DateTime<Utc>, u64>,
     cache_file: &str,
-) {
+) -> Result<()> {
     if remove_dates.is_empty() {
-        return;
+        return Ok(());
     }
 
     let mut new_dates = cached_dates.clone();
@@ -82,10 +79,12 @@ pub fn remove_dates_from_cache(
         // If we have deleted all old dates from our cache file we can remove
         // it. On the next run all entries will be fetched and the cache
         // recreated.
-        remove_file(cache_file).unwrap();
+        remove_file(cache_file)?;
     } else {
-        save_dates_to_cache(cache_file, &new_dates);
+        save_dates_to_cache(cache_file, &new_dates)?;
     }
+
+    Ok(())
 }
 
 #[cfg(test)]
