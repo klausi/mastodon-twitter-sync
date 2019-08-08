@@ -134,11 +134,12 @@ fn twitter_fetch_tweet_dates(
         }
         for tweet in tweets {
             dates.insert(tweet.created_at, tweet.id);
-            match max_id {
-                Some(max) if tweet.id < max => {
-                    max_id = Some(tweet.id -1);
-                },
-                _ => (),
+            if let Some(max) = max_id {
+                if tweet.id < max {
+                    max_id = Some(tweet.id - 1);
+                }
+            } else {
+                max_id = Some(tweet.id - 1);
             }
         }
     }
