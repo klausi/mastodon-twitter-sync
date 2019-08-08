@@ -2,8 +2,10 @@ use mammut::{Mastodon, StatusesRequest};
 use std::fs::File;
 use std::io::prelude::*;
 use std::process;
+use structopt::StructOpt;
 use tokio::runtime::current_thread::block_on_all;
 
+use crate::args::*;
 use crate::config::*;
 use crate::delete_favs::*;
 use crate::delete_statuses::mastodon_delete_older_statuses;
@@ -13,6 +15,7 @@ use crate::registration::mastodon_register;
 use crate::registration::twitter_register;
 use crate::sync::*;
 
+mod args;
 mod config;
 mod delete_favs;
 mod delete_statuses;
@@ -21,7 +24,9 @@ mod registration;
 mod sync;
 
 fn main() {
-    let config = match File::open("mastodon-twitter-sync.toml") {
+    let args = Args::from_args();
+
+    let config = match File::open(&args.config) {
         Ok(f) => config_load(f),
         Err(_) => {
             let mastodon = mastodon_register();
@@ -39,7 +44,7 @@ fn main() {
 
             // Save config for using on the next run.
             let toml = toml::to_string(&config).unwrap();
-            let mut file = File::create("mastodon-twitter-sync.toml").unwrap();
+            let mut file = File::create(&args.config).unwrap();
             file.write_all(toml.as_bytes()).unwrap();
 
             config
@@ -105,17 +110,21 @@ fn main() {
 
     for toot in posts.toots {
         println!("Posting to Mastodon: {}", toot.text);
-        if let Err(e) = post_to_mastodon(&mastodon, toot) {
-            println!("Error posting toot to Mastodon: {:#?}", e);
-            process::exit(5);
+        if !args.dry_run {
+            if let Err(e) = post_to_mastodon(&mastodon, toot) {
+                println!("Error posting toot to Mastodon: {:#?}", e);
+                process::exit(5);
+            }
         }
     }
 
     for tweet in posts.tweets {
         println!("Posting to Twitter: {}", tweet.text);
-        if let Err(e) = post_to_twitter(&token, tweet) {
-            println!("Error posting tweet to Twitter: {:#?}", e);
-            process::exit(6);
+        if !args.dry_run {
+            if let Err(e) = post_to_twitter(&token, tweet) {
+                println!("Error posting tweet to Twitter: {:#?}", e);
+                process::exit(6);
+            }
         }
     }
 
