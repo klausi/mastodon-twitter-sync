@@ -200,7 +200,7 @@ fn mastodon_toot_get_text(toot: &Status) -> String {
 // Ensure that sync posts have not been made before to prevent syncing loops.
 // Use a cache file to temporarily store posts and compare them on the next
 // invocation.
-pub fn filter_posted_before(posts: StatusUpdates) -> Result<StatusUpdates> {
+pub fn filter_posted_before(posts: StatusUpdates, dry_run: bool) -> Result<StatusUpdates> {
     // If there are not status updates then we don't need to check anything.
     if posts.toots.is_empty() && posts.tweets.is_empty() {
         return Ok(posts);
@@ -235,8 +235,10 @@ pub fn filter_posted_before(posts: StatusUpdates) -> Result<StatusUpdates> {
         }
     }
 
-    let json = serde_json::to_string(&cache)?;
-    fs::write(cache_file, json.as_bytes())?;
+    if !dry_run {
+        let json = serde_json::to_string(&cache)?;
+        fs::write(cache_file, json.as_bytes())?;
+    }
 
     Ok(filtered_posts)
 }

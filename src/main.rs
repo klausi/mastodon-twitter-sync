@@ -112,24 +112,28 @@ fn run() -> Result<()> {
     }
     let mut posts = determine_posts(&mastodon_statuses, &tweets);
 
-    posts = filter_posted_before(posts)?;
+    posts = filter_posted_before(posts, args.dry_run)?;
 
     for toot in posts.toots {
-        println!("Posting to Mastodon: {}", toot.text);
-        if !args.dry_run {
-            if let Err(e) = post_to_mastodon(&mastodon, toot) {
-                println!("Error posting toot to Mastodon: {:#?}", e);
-                process::exit(5);
+        if !args.skip_existing_posts {
+            println!("Posting to Mastodon: {}", toot.text);
+            if !args.dry_run {
+                if let Err(e) = post_to_mastodon(&mastodon, toot) {
+                    println!("Error posting toot to Mastodon: {:#?}", e);
+                    process::exit(5);
+                }
             }
         }
     }
 
     for tweet in posts.tweets {
-        println!("Posting to Twitter: {}", tweet.text);
-        if !args.dry_run {
-            if let Err(e) = post_to_twitter(&token, tweet) {
-                println!("Error posting tweet to Twitter: {:#?}", e);
-                process::exit(6);
+        if !args.skip_existing_posts {
+            println!("Posting to Twitter: {}", tweet.text);
+            if !args.dry_run {
+                if let Err(e) = post_to_twitter(&token, tweet) {
+                    println!("Error posting tweet to Twitter: {:#?}", e);
+                    process::exit(6);
+                }
             }
         }
     }

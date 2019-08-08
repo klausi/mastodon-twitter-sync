@@ -8,4 +8,7 @@ pub struct Args {
     /// Dry run
     #[structopt(short = "n", long = "dry-run")]
     pub dry_run: bool,
+    /// Skip all existing posts, use this if you only want to sync future posts
+    #[structopt(long = "skip-existing-posts")]
+    pub skip_existing_posts: bool,
 }
