@@ -1,5 +1,5 @@
-use chrono::prelude::*;
 use crate::errors::*;
+use chrono::prelude::*;
 use mammut::Data;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -8,8 +8,7 @@ use std::fs::remove_file;
 
 #[inline]
 pub fn config_load(config: &str) -> Result<Config> {
-    toml::from_str(config)
-        .map_err(Error::from)
+    toml::from_str(config).map_err(Error::from)
 }
 
 #[derive(Debug, Serialize, Deserialize)]

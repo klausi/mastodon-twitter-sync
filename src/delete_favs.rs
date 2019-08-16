@@ -1,6 +1,6 @@
+use crate::errors::*;
 use chrono::prelude::*;
 use chrono::Duration;
-use crate::errors::*;
 use egg_mode::error::Error as EggModeError;
 use egg_mode::error::TwitterErrors;
 use mammut::Error as MammutError;
@@ -12,7 +12,7 @@ use tokio::runtime::current_thread::block_on_all;
 use crate::config::*;
 
 // Delete old favourites of this account that are older than 90 days.
-pub fn mastodon_delete_older_favs(mastodon: &Mastodon) -> Result<()> {
+pub fn mastodon_delete_older_favs(mastodon: &Mastodon, dry_run: bool) -> Result<()> {
     // In order not to fetch old favs every time keep them in a cache file
     // keyed by their dates.
     let cache_file = "mastodon_fav_cache.json";
@@ -21,6 +21,11 @@ pub fn mastodon_delete_older_favs(mastodon: &Mastodon) -> Result<()> {
     let three_months_ago = Utc::now() - Duration::days(90);
     for (date, toot_id) in dates.range(..three_months_ago) {
         println!("Deleting Mastodon fav {} from {}", toot_id, date);
+        // Do nothing on a dry run, just print what would be done.
+        if dry_run {
+            continue;
+        }
+
         remove_dates.push(date);
         // The status could have been deleted already by the user, ignore API
         // errors in that case.
@@ -34,14 +39,20 @@ pub fn mastodon_delete_older_favs(mastodon: &Mastodon) -> Result<()> {
     remove_dates_from_cache(remove_dates, &dates, cache_file)
 }
 
-fn mastodon_load_fav_dates(mastodon: &Mastodon, cache_file: &str) -> Result<BTreeMap<DateTime<Utc>, u64>> {
+fn mastodon_load_fav_dates(
+    mastodon: &Mastodon,
+    cache_file: &str,
+) -> Result<BTreeMap<DateTime<Utc>, u64>> {
     match load_dates_from_cache(cache_file)? {
         Some(dates) => Ok(dates),
         None => mastodon_fetch_fav_dates(mastodon, cache_file),
     }
 }
 
-fn mastodon_fetch_fav_dates(mastodon: &Mastodon, cache_file: &str) -> Result<BTreeMap<DateTime<Utc>, u64>> {
+fn mastodon_fetch_fav_dates(
+    mastodon: &Mastodon,
+    cache_file: &str,
+) -> Result<BTreeMap<DateTime<Utc>, u64>> {
     let mut dates = BTreeMap::new();
     let mut favourites_pager = mastodon.favourites()?;
     for status in &favourites_pager.initial_items {
@@ -66,7 +77,11 @@ fn mastodon_fetch_fav_dates(mastodon: &Mastodon, cache_file: &str) -> Result<BTr
 }
 
 // Delete old likes of this account that are older than 90 days.
-pub fn twitter_delete_older_favs(user_id: u64, token: &egg_mode::Token) -> Result<()> {
+pub fn twitter_delete_older_favs(
+    user_id: u64,
+    token: &egg_mode::Token,
+    dry_run: bool,
+) -> Result<()> {
     // In order not to fetch old likes every time keep them in a cache file
     // keyed by their dates.
     let cache_file = "twitter_fav_cache.json";
@@ -75,6 +90,11 @@ pub fn twitter_delete_older_favs(user_id: u64, token: &egg_mode::Token) -> Resul
     let three_months_ago = Utc::now() - Duration::days(90);
     for (delete_count, (date, tweet_id)) in dates.range(..three_months_ago).enumerate() {
         println!("Deleting Twitter fav {} from {}", tweet_id, date);
+        // Do nothing on a dry run, just print what would be done.
+        if dry_run {
+            continue;
+        }
+
         remove_dates.push(date);
         let deletion = egg_mode::tweet::unlike(*tweet_id, token);
         let delete_result = block_on_all(deletion);

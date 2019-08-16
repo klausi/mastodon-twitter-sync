@@ -32,10 +32,8 @@ fn run() -> Result<()> {
     let config = match fs::read_to_string(&args.config) {
         Ok(config) => config_load(&config)?,
         Err(_) => {
-            let mastodon = mastodon_register()
-                .context("Failed to setup mastodon account")?;
-            let twitter_config = twitter_register()
-                .context("Failed to setup twitter account")?;
+            let mastodon = mastodon_register().context("Failed to setup mastodon account")?;
+            let twitter_config = twitter_register().context("Failed to setup twitter account")?;
             let config = Config {
                 mastodon: MastodonConfig {
                     app: (*mastodon).clone(),
@@ -49,8 +47,7 @@ fn run() -> Result<()> {
 
             // Save config for using on the next run.
             let toml = toml::to_string(&config)?;
-            let mut file = File::create(&args.config)
-                .context("Failed to create config file")?;
+            let mut file = File::create(&args.config).context("Failed to create config file")?;
             file.write_all(toml.as_bytes())?;
 
             config
@@ -140,21 +137,21 @@ fn run() -> Result<()> {
 
     // Delete old mastodon statuses if that option is enabled.
     if config.mastodon.delete_older_statuses {
-        mastodon_delete_older_statuses(&mastodon, &account)
+        mastodon_delete_older_statuses(&mastodon, &account, args.dry_run)
             .context("Failed to delete old mastodon statuses")?;
     }
     if config.twitter.delete_older_statuses {
-        twitter_delete_older_statuses(config.twitter.user_id, &token)
+        twitter_delete_older_statuses(config.twitter.user_id, &token, args.dry_run)
             .context("Failed to delete old twitter statuses")?;
     }
 
     // Delete old mastodon favourites if that option is enabled.
     if config.mastodon.delete_older_favs {
-        mastodon_delete_older_favs(&mastodon)
+        mastodon_delete_older_favs(&mastodon, args.dry_run)
             .context("Failed to delete old mastodon favs")?;
     }
     if config.twitter.delete_older_favs {
-        twitter_delete_older_favs(config.twitter.user_id, &token)
+        twitter_delete_older_favs(config.twitter.user_id, &token, args.dry_run)
             .context("Failed to delete old twitter favs")?;
     }
 
