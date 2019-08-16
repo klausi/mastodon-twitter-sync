@@ -58,6 +58,18 @@ delete_older_statuses = true
 delete_older_favs = true
 ```
 
+## Preview what's going to be synced
+
+You can preview what's going to be synced using the `--dry-run` option:
+
+    cargo run --release -- --dry-run
+
+This is running a sync without actually posting.
+
+## Skip existing posts and only sync new posts
+
+If you already have posts in one or both of your accounts and you want to exclude them from being synced you can use `--skip-existing-posts`. This is going to mark all posts as synced without actually posting them.
+
 ## Periodic execution
 
 Every run of the program only synchronizes the accounts once. Use Cron to run it periodically, recommended every 10 minutes:

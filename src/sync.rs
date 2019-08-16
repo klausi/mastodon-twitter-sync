@@ -1,10 +1,10 @@
+use crate::errors::*;
 use egg_mode::tweet::Tweet;
 use egg_mode_text::character_count;
 use mammut::entities::status::Status;
 use regex::Regex;
 use std::collections::HashSet;
-use std::fs::File;
-use std::io::prelude::*;
+use std::fs;
 
 // Represents new status updates that should be posted to Twitter (tweets) and
 // Mastodon (toots).
@@ -200,10 +200,10 @@ fn mastodon_toot_get_text(toot: &Status) -> String {
 // Ensure that sync posts have not been made before to prevent syncing loops.
 // Use a cache file to temporarily store posts and compare them on the next
 // invocation.
-pub fn filter_posted_before(posts: StatusUpdates) -> StatusUpdates {
+pub fn filter_posted_before(posts: StatusUpdates, dry_run: bool) -> Result<StatusUpdates> {
     // If there are not status updates then we don't need to check anything.
     if posts.toots.is_empty() && posts.tweets.is_empty() {
-        return posts;
+        return Ok(posts);
     }
 
     let cache_file = "post_cache.json";
@@ -235,19 +235,18 @@ pub fn filter_posted_before(posts: StatusUpdates) -> StatusUpdates {
         }
     }
 
-    let json = serde_json::to_string(&cache).unwrap();
-    let mut file = File::create(cache_file).unwrap();
-    file.write_all(json.as_bytes()).unwrap();
+    if !dry_run {
+        let json = serde_json::to_string(&cache)?;
+        fs::write(cache_file, json.as_bytes())?;
+    }
 
-    filtered_posts
+    Ok(filtered_posts)
 }
 
 // Read the JSON encoded cache file from disk or provide en empty default cache.
 fn read_post_cache(cache_file: &str) -> HashSet<String> {
-    match File::open(cache_file) {
-        Ok(mut file) => {
-            let mut json = String::new();
-            let _ = file.read_to_string(&mut json);
+    match fs::read_to_string(cache_file) {
+        Ok(json) => {
             match serde_json::from_str::<HashSet<String>>(&json) {
                 Ok(cache) => {
                     // If the cache has more than 50 items already then empty it to not
@@ -328,7 +327,6 @@ mod tests {
         HashtagEntity, MediaEntity, MediaSize, MediaSizes, MediaType, UrlEntity,
     };
     use egg_mode::tweet::{ExtendedTweetEntities, TweetEntities, TweetSource};
-    use std::fs::File;
 
     #[test]
     fn tweet_shortening() {
@@ -612,12 +610,7 @@ UNLISTED 🔓 ✅ Tagged people
     }
 
     fn read_mastodon_status(file_name: &str) -> Status {
-        let json = {
-            let mut file = File::open(file_name).unwrap();
-            let mut ret = String::new();
-            file.read_to_string(&mut ret).unwrap();
-            ret
-        };
+        let json = fs::read_to_string(file_name).unwrap();
         let status: Status = serde_json::from_str(&json).unwrap();
         status
     }

@@ -1,8 +1,10 @@
+use crate::errors::*;
 use crate::sync::NewStatus;
 use egg_mode::media::UploadBuilder;
 use egg_mode::tweet::DraftTweet;
 use egg_mode::tweet::Tweet;
 use egg_mode::Token;
+use failure::format_err;
 use mammut::entities::status::Status;
 use mammut::media_builder::MediaBuilder;
 use mammut::status_builder::StatusBuilder;
@@ -48,7 +50,7 @@ pub fn post_to_mastodon(mastodon: &Mastodon, toot: NewStatus) -> mammut::Result<
 }
 
 /// Send a new status update to Twitter, including attachments.
-pub fn post_to_twitter(token: &Token, tweet: NewStatus) -> Result<Tweet, failure::Error> {
+pub fn post_to_twitter(token: &Token, tweet: NewStatus) -> Result<Tweet> {
     let mut draft = DraftTweet::new(tweet.text);
     let mut media_ids = Vec::new();
     for attachment in tweet.attachments {
@@ -58,10 +60,7 @@ pub fn post_to_twitter(token: &Token, tweet: NewStatus) -> Result<Tweet, failure
         let media_type = response
             .headers()
             .get(CONTENT_TYPE)
-            // The ? operator does not work with Option :-(
-            // All HTTP responses should have a content type, so we can just
-            // panic here, YOLO!
-            .unwrap()
+            .ok_or_else(|| format_err!("Missing content-type on response"))?
             .to_str()?
             .parse::<mime::Mime>()?;
         let mut builder = UploadBuilder::new(bytes, media_type);
