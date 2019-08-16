@@ -64,7 +64,7 @@ You can preview what's going to be synced using the `--dry-run` option:
 
     cargo run --release -- --dry-run
 
-This is running a sync without actually posting.
+This is running a sync without actually posting or deleting anything.
 
 ## Skip existing posts and only sync new posts
 
