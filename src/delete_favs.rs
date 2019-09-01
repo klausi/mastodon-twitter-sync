@@ -98,21 +98,18 @@ pub fn twitter_delete_older_favs(
         remove_dates.push(date);
         let deletion = egg_mode::tweet::unlike(*tweet_id, token);
         let delete_result = block_on_all(deletion);
-        match delete_result {
-            // The like could have been deleted already by the user, ignore API
-            // errors in that case.
-            Err(EggModeError::TwitterError(TwitterErrors { errors: e })) => {
-                // Error 144 is "No status found with that ID".
-                if e.len() != 1 || e[0].code != 144 {
-                    println!("{:#?}", e);
-                    panic!("Twitter response error");
-                }
+        // The like could have been deleted already by the user, ignore API
+        // errors in that case.
+        if let Err(EggModeError::TwitterError(TwitterErrors { errors: e })) = delete_result {
+            // Error 144 is "No status found with that ID".
+            if e.len() != 1 || e[0].code != 144 {
+                return Err(Error::from(EggModeError::TwitterError(TwitterErrors {
+                    errors: e,
+                })));
             }
-            Err(_) => {
-                delete_result?;
-            }
-            Ok(_) => {}
-        };
+        } else {
+            delete_result?;
+        }
         // Only delete 100 likes in one run to not run into API limits or open
         // network port limits.
         if delete_count == 100 {
