@@ -268,7 +268,22 @@ fn read_post_cache(cache_file: &str) -> HashSet<String> {
 // Returns a list of direct links to attachments for download.
 fn tweet_get_attachments(tweet: &Tweet) -> Vec<NewMedia> {
     let mut links = Vec::new();
-    if let Some(media) = &tweet.extended_entities {
+    // Check if there are attachments directly on the tweet, otherwise try to
+    // use attachments from retweets.
+    let media = match &tweet.extended_entities {
+        Some(media) => Some(media),
+        None => {
+            let mut retweet_media = None;
+            if let Some(retweet) = &tweet.retweeted_status {
+                if let Some(media) = &retweet.extended_entities {
+                    retweet_media = Some(media);
+                }
+            }
+            retweet_media
+        }
+    };
+
+    if let Some(media) = media {
         for attachment in &media.media {
             match &attachment.video_info {
                 Some(video_info) => {
@@ -327,6 +342,7 @@ mod tests {
         HashtagEntity, MediaEntity, MediaSize, MediaSizes, MediaType, UrlEntity,
     };
     use egg_mode::tweet::{ExtendedTweetEntities, TweetEntities, TweetSource};
+    use egg_mode::user::{TwitterUser, UserEntities, UserEntityDetail};
 
     #[test]
     fn tweet_shortening() {
@@ -601,6 +617,30 @@ UNLISTED 🔓 ✅ Tagged people
         );
     }
 
+    // Test retweets that have attachments.
+    #[test]
+    fn picture_in_retweet() {
+        let mut retweet = get_twitter_status();
+        retweet.retweeted = Some(true);
+        let mut original_tweet = get_twitter_status_media();
+        original_tweet.user = Some(Box::new(get_twitter_user()));
+        retweet.retweeted_status = Some(Box::new(original_tweet));
+
+        let tweets = vec![retweet];
+        let toots = Vec::new();
+        let posts = determine_posts(&toots, &tweets);
+
+        let sync_toot = &posts.toots[0];
+        assert_eq!(
+            sync_toot.text,
+            "RT test123: Verhalten bei #Hausdurchsuchung"
+        );
+        assert_eq!(
+            sync_toot.attachments[0].attachment_url,
+            "https://pbs.twimg.com/media/Du70iGVUcAMgBp6.jpg"
+        );
+    }
+
     fn get_mastodon_status() -> Status {
         read_mastodon_status("src/mastodon_status.json")
     }
@@ -808,6 +848,54 @@ UNLISTED 🔓 ✅ Tagged people
             }],
         });
         tweet
+    }
+
+    fn get_twitter_user() -> TwitterUser {
+        TwitterUser {
+            contributors_enabled: false,
+            created_at: Utc::now(),
+            default_profile: false,
+            default_profile_image: false,
+            description: Some("test".to_string()),
+            entities: UserEntities {
+                description: UserEntityDetail { urls: Vec::new() },
+                url: None,
+            },
+            favourites_count: 770,
+            follow_request_sent: Some(false),
+            followers_count: 1484,
+            friends_count: 853,
+            geo_enabled: false,
+            id: 1,
+            is_translator: false,
+            lang: None,
+            listed_count: 11,
+            location: Some("Rustland".to_string()),
+            name: "test user".to_string(),
+            profile_background_color: "C0DEED".to_string(),
+            profile_background_image_url: None,
+            profile_background_image_url_https: None,
+            profile_background_tile: Some(false),
+            profile_banner_url: None,
+            profile_image_url: "https://example.com".to_string(),
+            profile_image_url_https: "https://example.com".to_string(),
+            profile_link_color: "142DCF".to_string(),
+            profile_sidebar_border_color: "C0DEED".to_string(),
+            profile_sidebar_fill_color: "DDEEF6".to_string(),
+            profile_text_color: "333333".to_string(),
+            profile_use_background_image: true,
+            protected: false,
+            screen_name: "test123".to_string(),
+            show_all_inline_media: None,
+            status: None,
+            statuses_count: 157,
+            time_zone: None,
+            url: None,
+            utc_offset: None,
+            verified: false,
+            withheld_in_countries: None,
+            withheld_scope: None,
+        }
     }
 
 }
