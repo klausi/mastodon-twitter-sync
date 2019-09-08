@@ -318,7 +318,15 @@ fn tweet_get_attachments(tweet: &Tweet) -> Vec<NewMedia> {
 // Returns a list of direct links to attachments for download.
 fn toot_get_attachments(toot: &Status) -> Vec<NewMedia> {
     let mut links = Vec::new();
-    for attachment in &toot.media_attachments {
+    let mut attachments = &toot.media_attachments;
+    // If there are no attachments check if this is a boost and if there might
+    // be some attachments there.
+    if attachments.is_empty() {
+        if let Some(boost) = &toot.reblog {
+            attachments = &boost.media_attachments;
+        }
+    }
+    for attachment in attachments {
         // Only images are supported for now, no videos.
         if let mammut::entities::attachment::MediaType::Image = attachment.media_type {
             links.push(NewMedia {
@@ -639,6 +647,22 @@ UNLISTED 🔓 ✅ Tagged people
             sync_toot.attachments[0].attachment_url,
             "https://pbs.twimg.com/media/Du70iGVUcAMgBp6.jpg"
         );
+    }
+
+    // Test boosts that have attachments.
+    #[test]
+    fn picture_in_boost() {
+        let original_toot = get_mastodon_status_media();
+        let mut boost = get_mastodon_status();
+        boost.reblog = Some(Box::new(original_toot));
+
+        let tweets = Vec::new();
+        let toots = vec![boost];
+        let posts = determine_posts(&toots, &tweets);
+
+        let sync_tweet = &posts.tweets[0];
+        assert_eq!(sync_tweet.text, "RT example: test image");
+        assert_eq!(sync_tweet.attachments[0].attachment_url, "https://files.mastodon.social/media_attachments/files/011/514/042/original/e046a3fb6a71a07b.jpg");
     }
 
     fn get_mastodon_status() -> Status {
