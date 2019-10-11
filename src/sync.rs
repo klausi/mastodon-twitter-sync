@@ -49,7 +49,11 @@ pub fn determine_posts(mastodon_statuses: &[Status], twitter_statuses: &[Tweet])
     }
 
     'toots: for toot in mastodon_statuses {
-        let post = tweet_shorten(&mastodon_toot_get_text(toot), &toot.url);
+        // If this is a reblog/boost then take the URL to the original toot.
+        let post = match &toot.reblog {
+            None => tweet_shorten(&mastodon_toot_get_text(toot), &toot.url),
+            Some(reblog) => tweet_shorten(&mastodon_toot_get_text(toot), &reblog.url),
+        };
         // Skip direct toots to other Mastodon users, even if they are public.
         if post.starts_with('@') {
             continue;
@@ -90,8 +94,11 @@ fn toot_and_tweet_are_equal(toot: &Status, tweet: &Tweet) -> bool {
         return true;
     }
     // Mastodon allows up to 500 characters, so we might need to shorten the
-    // toot.
-    let shortened_toot = tweet_shorten(&toot_text, &toot.url);
+    // toot. If this is a reblog/boost then take the URL to the original toot.
+    let shortened_toot = match &toot.reblog {
+        None => tweet_shorten(&toot_text, &toot.url),
+        Some(reblog) => tweet_shorten(&toot_text, &reblog.url),
+    };
     let mut shortened_toot_compare = shortened_toot.to_lowercase();
     shortened_toot_compare = shortened_toot_compare.replace("http://", "");
     shortened_toot_compare = shortened_toot_compare.replace("https://", "");
@@ -473,6 +480,20 @@ UNLISTED 🔓 ✅ Tagged people
 
         let posts = determine_posts(&vec![status], &Vec::new());
         assert_eq!(posts.tweets[0].text, "RT example: Some example toooot!");
+    }
+
+    // Test that the URL from the original toot is used in a long boost.
+    #[test]
+    fn mastodon_boost_url() {
+        let mut reblog = get_mastodon_status();
+        reblog.content = "longer than 280 characters longer than 280 characters longer than 280 characters longer than 280 characters longer than 280 characters longer than 280 characters longer than 280 characters longer than 280 characters longer than 280 characters".to_string();
+        reblog.url = Some("https://example.com/a/b/c/5".to_string());
+        let mut status = get_mastodon_status();
+        status.reblog = Some(Box::new(reblog));
+        status.reblogged = Some(true);
+
+        let posts = determine_posts(&vec![status], &Vec::new());
+        assert_eq!(posts.tweets[0].text, "RT example: longer than 280 characters longer than 280 characters longer than 280 characters longer than 280 characters longer than 280 characters longer than 280 characters longer than 280 characters longer than… https://example.com/a/b/c/5");
     }
 
     // Test that the old "RT @username" prefix is considered equal to "RT
@@ -921,5 +942,4 @@ UNLISTED 🔓 ✅ Tagged people
             withheld_scope: None,
         }
     }
-
 }
