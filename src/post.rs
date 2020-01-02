@@ -15,11 +15,14 @@ use std::io::Read;
 use tempfile::NamedTempFile;
 use tokio::runtime::current_thread::block_on_all;
 
-pub fn post_to_mastodon(mastodon: &Mastodon, toot: NewStatus) -> mammut::Result<Status> {
+pub fn post_to_mastodon(mastodon: &Mastodon, toot: NewStatus) -> Result<Status> {
     let mut status = StatusBuilder::new(toot.text.clone());
     // Post attachments first, if there are any.
     for attachment in toot.attachments {
-        let mut response = reqwest::get(&attachment.attachment_url)?;
+        let mut response = reqwest::blocking::get(&attachment.attachment_url).context(format!(
+            "Failed downloading attachment {}",
+            attachment.attachment_url
+        ))?;
         let mut tmpfile = NamedTempFile::new()?;
         ::std::io::copy(&mut response, &mut tmpfile)?;
 
@@ -46,7 +49,10 @@ pub fn post_to_mastodon(mastodon: &Mastodon, toot: NewStatus) -> mammut::Result<
         remove_file(tmpfile)?;
     }
 
-    mastodon.new_status(status)
+    match mastodon.new_status(status) {
+        Ok(s) => Ok(s),
+        Err(e) => Err(e.into()),
+    }
 }
 
 /// Send a new status update to Twitter, including attachments.
@@ -54,7 +60,7 @@ pub fn post_to_twitter(token: &Token, tweet: NewStatus) -> Result<Tweet> {
     let mut draft = DraftTweet::new(tweet.text);
     let mut media_ids = Vec::new();
     for attachment in tweet.attachments {
-        let mut response = reqwest::get(&attachment.attachment_url)?;
+        let mut response = reqwest::blocking::get(&attachment.attachment_url)?;
         let mut bytes = Vec::new();
         response.read_to_end(&mut bytes)?;
         let media_type = response

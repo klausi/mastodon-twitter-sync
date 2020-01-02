@@ -13,9 +13,11 @@ failure = ">=0.1.5"
 mammut = ">=0.13.0"
 mime = ">=0.3.13"
 regex = ">=0.2.2"
-reqwest = ">=0.9.5"
+reqwest = { version = ">=0.10", features = ["blocking"] }
 serde = { version = ">=1.0", features = ["derive"] }
-tokio = ">=0.1.15"
+# Tokio is frozen on 0.1 until egg-mode is updated for that. See
+# https://github.com/QuietMisdreavus/twitter-rs/pull/73
+tokio = "0.1"
 tempfile = ">=3"
 toml = ">=0.4.5"
 serde_json = ">=1.0.6"
