@@ -136,40 +136,7 @@ fn toot_and_tweet_are_equal(toot: &Status, tweet: &Tweet) -> bool {
 fn tweet_unshorten_decode(tweet: &Tweet) -> String {
     let (mut tweet_text, urls, media) = match tweet.retweeted_status {
         None => (
-            match tweet.quoted_status {
-                None => tweet.text.clone(),
-                Some(ref quoted_tweet) => {
-                    // Prevent infinite quote tweets. We only want to include
-                    // the first level, so make sure that the original has any
-                    // quote tweet removed.
-                    let mut original = quoted_tweet.clone();
-                    original.quoted_status = None;
-                    let original_text = tweet_unshorten_decode(&original);
-                    let screen_name = original.user.unwrap().screen_name;
-                    let mut tweet_text = tweet.text.clone();
-
-                    // Remove quote link at the end of the tweet text.
-                    for url in &tweet.entities.urls {
-                        if let Some(expanded_url) = &url.expanded_url {
-                            if expanded_url
-                                == &format!(
-                                    "https://twitter.com/{}/status/{}",
-                                    screen_name, quoted_tweet.id
-                                )
-                            {
-                                tweet_text = tweet_text.replace(&url.url, "").trim().to_string();
-                            }
-                        }
-                    }
-
-                    format!(
-                        "{}
-
-QT {}: {}",
-                        tweet_text, screen_name, original_text
-                    )
-                }
-            },
+            tweet_get_text_with_quote(tweet),
             &tweet.entities.urls,
             &tweet.extended_entities,
         ),
@@ -200,6 +167,44 @@ QT {}: {}",
 
     // Twitterposts have HTML entities such as &amp;, we need to decode them.
     dissolve::strip_html_tags(&tweet_text).join("")
+}
+
+// If this is a quote tweet then include the original text.
+fn tweet_get_text_with_quote(tweet: &Tweet) -> String {
+    match tweet.quoted_status {
+        None => tweet.text.clone(),
+        Some(ref quoted_tweet) => {
+            // Prevent infinite quote tweets. We only want to include
+            // the first level, so make sure that the original has any
+            // quote tweet removed.
+            let mut original = quoted_tweet.clone();
+            original.quoted_status = None;
+            let original_text = tweet_unshorten_decode(&original);
+            let screen_name = original.user.unwrap().screen_name;
+            let mut tweet_text = tweet.text.clone();
+
+            // Remove quote link at the end of the tweet text.
+            for url in &tweet.entities.urls {
+                if let Some(expanded_url) = &url.expanded_url {
+                    if expanded_url
+                        == &format!(
+                            "https://twitter.com/{}/status/{}",
+                            screen_name, quoted_tweet.id
+                        )
+                    {
+                        tweet_text = tweet_text.replace(&url.url, "").trim().to_string();
+                    }
+                }
+            }
+
+            format!(
+                "{}
+
+QT {}: {}",
+                tweet_text, screen_name, original_text
+            )
+        }
+    }
 }
 
 fn tweet_shorten(text: &str, toot_url: &Option<String>) -> String {
