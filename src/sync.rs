@@ -134,39 +134,38 @@ fn toot_and_tweet_are_equal(toot: &Status, tweet: &Tweet) -> bool {
 // Replace t.co URLs and HTML entity decode &amp;.
 // Directly include quote tweets in the text.
 fn tweet_unshorten_decode(tweet: &Tweet) -> String {
-    let (mut tweet_text, urls, media) = match tweet.retweeted_status {
-        None => (
-            tweet_get_text_with_quote(tweet),
-            &tweet.entities.urls,
-            &tweet.extended_entities,
-        ),
-        Some(ref retweet) => (
-            format!(
-                "RT {}: {}",
-                retweet.clone().user.unwrap().screen_name,
-                retweet.text
-            ),
-            &retweet.entities.urls,
-            &retweet.extended_entities,
-        ),
-    };
-    // Replace t.co URLs with the real links in tweets.
-    for url in urls {
-        if let Some(expanded_url) = &url.expanded_url {
-            tweet_text = tweet_text.replace(&url.url, &expanded_url);
-        }
+    // We need to cleanup the tweet text while passing the tweet around.
+    let mut tweet = tweet.clone();
+
+    if let Some(retweet) = &tweet.retweeted_status {
+        tweet.text = format!(
+            "RT {}: {}",
+            retweet.clone().user.unwrap().screen_name,
+            retweet.text
+        );
+        tweet.entities.urls = retweet.entities.urls.clone();
+        tweet.extended_entities = retweet.extended_entities.clone();
     }
+
     // Remove the last media link if there is one, we will upload attachments
     // directly to Mastodon.
-    if let Some(media) = media {
+    if let Some(media) = &tweet.extended_entities {
         for attachment in &media.media {
-            tweet_text = tweet_text.replace(&attachment.url, "");
+            tweet.text = tweet.text.replace(&attachment.url, "");
         }
     }
-    tweet_text = tweet_text.trim().to_string();
+    tweet.text = tweet.text.trim().to_string();
+    tweet.text = tweet_get_text_with_quote(&tweet);
+
+    // Replace t.co URLs with the real links in tweets.
+    for url in tweet.entities.urls {
+        if let Some(expanded_url) = &url.expanded_url {
+            tweet.text = tweet.text.replace(&url.url, &expanded_url);
+        }
+    }
 
     // Twitterposts have HTML entities such as &amp;, we need to decode them.
-    dissolve::strip_html_tags(&tweet_text).join("")
+    dissolve::strip_html_tags(&tweet.text).join("")
 }
 
 // If this is a quote tweet then include the original text.
@@ -761,6 +760,50 @@ UNLISTED 🔓 ✅ Tagged people
             "Quote tweet test
 
 QT test123: Original text"
+        );
+    }
+
+    // Test that attachments on a quote tweet get synchronized.
+    #[test]
+    fn quote_tweet_attachments() {
+        let mut quote_tweet = get_twitter_status_media();
+        quote_tweet.text =
+            "Quote tweet test https://t.co/MqIukRm3dG https://t.co/AhiyYybK1m".to_string();
+        quote_tweet.entities = TweetEntities {
+            hashtags: Vec::new(),
+            symbols: Vec::new(),
+            urls: vec![UrlEntity {
+                display_url: "twitter.com/test123/statu…".to_string(),
+                expanded_url: Some(
+                    "https://twitter.com/test123/status/1230906460160380928".to_string(),
+                ),
+                range: (21, 44),
+                url: "https://t.co/MqIukRm3dG".to_string(),
+            }],
+            user_mentions: Vec::new(),
+            media: None,
+        };
+
+        let mut original_tweet = get_twitter_status();
+        original_tweet.text = "Original text".to_string();
+        original_tweet.user = Some(Box::new(get_twitter_user()));
+        original_tweet.id = 1230906460160380928;
+        quote_tweet.quoted_status = Some(Box::new(original_tweet));
+
+        let tweets = vec![quote_tweet];
+        let toots = Vec::new();
+        let posts = determine_posts(&toots, &tweets);
+
+        let sync_toot = &posts.toots[0];
+        assert_eq!(
+            sync_toot.text,
+            "Quote tweet test
+
+QT test123: Original text"
+        );
+        assert_eq!(
+            sync_toot.attachments[0].attachment_url,
+            "https://pbs.twimg.com/media/Du70iGVUcAMgBp6.jpg"
         );
     }
 
