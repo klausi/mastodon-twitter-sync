@@ -314,13 +314,17 @@ fn read_post_cache(cache_file: &str) -> HashSet<String> {
 fn tweet_get_attachments(tweet: &Tweet) -> Vec<NewMedia> {
     let mut links = Vec::new();
     // Check if there are attachments directly on the tweet, otherwise try to
-    // use attachments from retweets.
+    // use attachments from retweets and quote tweets.
     let media = match &tweet.extended_entities {
         Some(media) => Some(media),
         None => {
             let mut retweet_media = None;
             if let Some(retweet) = &tweet.retweeted_status {
                 if let Some(media) = &retweet.extended_entities {
+                    retweet_media = Some(media);
+                }
+            } else if let Some(quote_tweet) = &tweet.quoted_status {
+                if let Some(media) = &quote_tweet.extended_entities {
                     retweet_media = Some(media);
                 }
             }
@@ -800,6 +804,48 @@ QT test123: Original text"
             "Quote tweet test
 
 QT test123: Original text"
+        );
+        assert_eq!(
+            sync_toot.attachments[0].attachment_url,
+            "https://pbs.twimg.com/media/Du70iGVUcAMgBp6.jpg"
+        );
+    }
+
+    // Test that attachments on the quote tweet original get synchronized.
+    #[test]
+    fn quote_tweet_attachments_original() {
+        let mut quote_tweet = get_twitter_status();
+        quote_tweet.text = "Quote tweet test https://t.co/MqIukRm3dG".to_string();
+        quote_tweet.entities = TweetEntities {
+            hashtags: Vec::new(),
+            symbols: Vec::new(),
+            urls: vec![UrlEntity {
+                display_url: "twitter.com/test123/statu…".to_string(),
+                expanded_url: Some(
+                    "https://twitter.com/test123/status/1230906460160380928".to_string(),
+                ),
+                range: (21, 44),
+                url: "https://t.co/MqIukRm3dG".to_string(),
+            }],
+            user_mentions: Vec::new(),
+            media: None,
+        };
+
+        let mut original_tweet = get_twitter_status_media();
+        original_tweet.user = Some(Box::new(get_twitter_user()));
+        original_tweet.id = 1230906460160380928;
+        quote_tweet.quoted_status = Some(Box::new(original_tweet));
+
+        let tweets = vec![quote_tweet];
+        let toots = Vec::new();
+        let posts = determine_posts(&toots, &tweets);
+
+        let sync_toot = &posts.toots[0];
+        assert_eq!(
+            sync_toot.text,
+            "Quote tweet test
+
+QT test123: Verhalten bei #Hausdurchsuchung"
         );
         assert_eq!(
             sync_toot.attachments[0].attachment_url,
