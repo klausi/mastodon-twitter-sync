@@ -131,11 +131,45 @@ fn toot_and_tweet_are_equal(toot: &Status, tweet: &Tweet) -> bool {
     false
 }
 
-// Replace t.co URLs and HTML entity decode &amp;
+// Replace t.co URLs and HTML entity decode &amp;.
+// Directly include quote tweets in the text.
 fn tweet_unshorten_decode(tweet: &Tweet) -> String {
     let (mut tweet_text, urls, media) = match tweet.retweeted_status {
         None => (
-            tweet.text.clone(),
+            match tweet.quoted_status {
+                None => tweet.text.clone(),
+                Some(ref quoted_tweet) => {
+                    // Prevent infinite quote tweets. We only want to include
+                    // the first level, so make sure that the original has any
+                    // quote tweet removed.
+                    let mut original = quoted_tweet.clone();
+                    original.quoted_status = None;
+                    let original_text = tweet_unshorten_decode(&original);
+                    let screen_name = original.user.unwrap().screen_name;
+                    let mut tweet_text = tweet.text.clone();
+
+                    // Remove quote link at the end of the tweet text.
+                    for url in &tweet.entities.urls {
+                        if let Some(expanded_url) = &url.expanded_url {
+                            if expanded_url
+                                == &format!(
+                                    "https://twitter.com/{}/status/{}",
+                                    screen_name, quoted_tweet.id
+                                )
+                            {
+                                tweet_text = tweet_text.replace(&url.url, "").trim().to_string();
+                            }
+                        }
+                    }
+
+                    format!(
+                        "{}
+
+QT {}: {}",
+                        tweet_text, screen_name, original_text
+                    )
+                }
+            },
             &tweet.entities.urls,
             &tweet.extended_entities,
         ),
@@ -684,6 +718,45 @@ UNLISTED 🔓 ✅ Tagged people
         let sync_tweet = &posts.tweets[0];
         assert_eq!(sync_tweet.text, "RT example: test image");
         assert_eq!(sync_tweet.attachments[0].attachment_url, "https://files.mastodon.social/media_attachments/files/011/514/042/original/e046a3fb6a71a07b.jpg");
+    }
+
+    // Test that a quote tweet is directly embedded for posting to Mastodon.
+    #[test]
+    fn quote_tweet() {
+        let mut quote_tweet = get_twitter_status();
+        quote_tweet.text = "Quote tweet test https://t.co/MqIukRm3dG".to_string();
+        quote_tweet.entities = TweetEntities {
+            hashtags: Vec::new(),
+            symbols: Vec::new(),
+            urls: vec![UrlEntity {
+                display_url: "twitter.com/test123/statu…".to_string(),
+                expanded_url: Some(
+                    "https://twitter.com/test123/status/1230906460160380928".to_string(),
+                ),
+                range: (21, 44),
+                url: "https://t.co/MqIukRm3dG".to_string(),
+            }],
+            user_mentions: Vec::new(),
+            media: None,
+        };
+
+        let mut original_tweet = get_twitter_status();
+        original_tweet.text = "Original text".to_string();
+        original_tweet.user = Some(Box::new(get_twitter_user()));
+        original_tweet.id = 1230906460160380928;
+        quote_tweet.quoted_status = Some(Box::new(original_tweet));
+
+        let tweets = vec![quote_tweet];
+        let toots = Vec::new();
+        let posts = determine_posts(&toots, &tweets);
+
+        let sync_toot = &posts.toots[0];
+        assert_eq!(
+            sync_toot.text,
+            "Quote tweet test
+
+QT test123: Original text"
+        );
     }
 
     fn get_mastodon_status() -> Status {
