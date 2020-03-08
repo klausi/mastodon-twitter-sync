@@ -376,13 +376,10 @@ fn toot_get_attachments(toot: &Status) -> Vec<NewMedia> {
         }
     }
     for attachment in attachments {
-        // Only images are supported for now, no videos.
-        if let mammut::entities::attachment::MediaType::Image = attachment.media_type {
-            links.push(NewMedia {
-                attachment_url: attachment.url.clone(),
-                alt_text: attachment.description.clone(),
-            });
-        }
+        links.push(NewMedia {
+            attachment_url: attachment.url.clone(),
+            alt_text: attachment.description.clone(),
+        });
     }
     links
 }
