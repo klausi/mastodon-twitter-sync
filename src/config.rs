@@ -22,6 +22,8 @@ pub struct MastodonConfig {
     pub delete_older_statuses: bool,
     #[serde(default = "config_false_default")]
     pub delete_older_favs: bool,
+    #[serde(default = "config_true_default")]
+    pub sync_reblogs: bool,
     pub app: Data,
 }
 
@@ -37,10 +39,16 @@ pub struct TwitterConfig {
     pub delete_older_statuses: bool,
     #[serde(default = "config_false_default")]
     pub delete_older_favs: bool,
+    #[serde(default = "config_true_default")]
+    pub sync_retweets: bool,
 }
 
 fn config_false_default() -> bool {
     false
+}
+
+fn config_true_default() -> bool {
+    true
 }
 
 pub fn load_dates_from_cache(cache_file: &str) -> Result<Option<BTreeMap<DateTime<Utc>, u64>>> {
@@ -99,6 +107,37 @@ mod tests {
 [mastodon]
 delete_older_statuses = true
 delete_older_favs = true
+sync_reblogs = false
+[mastodon.app]
+base = "https://mastodon.social"
+client_id = "abcd"
+client_secret = "abcd"
+redirect = "urn:ietf:wg:oauth:2.0:oob"
+token = "1234"
+[twitter]
+consumer_key = "abcd"
+consumer_secret = "abcd"
+access_token = "1234"
+access_token_secret = "1234"
+user_id = 0
+user_name = " "
+delete_older_statuses = true
+delete_older_favs = true
+sync_retweets = false
+"#;
+        let config: Config = toml::from_str(toml_config).unwrap();
+        toml::to_string(&config).unwrap();
+    }
+
+    // Verify backwards compatibility with config files created for v1.3.3 or older
+    // Ensure that serializing/deserializing of the TOML config does not throw
+    // errors.
+    #[test]
+    fn serialize_config_v1_3_3() {
+        let toml_config = r#"
+[mastodon]
+delete_older_statuses = true
+delete_older_favs = true
 [mastodon.app]
 base = "https://mastodon.social"
 client_id = "abcd"
@@ -115,7 +154,11 @@ user_name = " "
 delete_older_statuses = true
 delete_older_favs = true
 "#;
+        // ^^notice sync_reblogs and sync_retweets is not set
+
         let config: Config = toml::from_str(toml_config).unwrap();
+        assert_eq!(config.mastodon.sync_reblogs, true);
+        assert_eq!(config.twitter.sync_retweets, true);
         toml::to_string(&config).unwrap();
     }
 }

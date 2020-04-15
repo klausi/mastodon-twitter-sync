@@ -41,6 +41,7 @@ fn run() -> Result<()> {
                     // enable this explicitly.
                     delete_older_statuses: false,
                     delete_older_favs: false,
+                    sync_reblogs: true,
                 },
                 twitter: twitter_config,
             };
@@ -107,7 +108,13 @@ fn run() -> Result<()> {
         };
         tweets.append(&mut (*next_tweets).to_vec());
     }
-    let mut posts = determine_posts(&mastodon_statuses, &tweets);
+
+    let options = SyncOptions {
+        sync_reblogs: config.mastodon.sync_reblogs,
+        sync_retweets: config.twitter.sync_retweets,
+    };
+
+    let mut posts = determine_posts(&mastodon_statuses, &tweets, &options);
 
     posts = filter_posted_before(posts, args.dry_run)?;
 
