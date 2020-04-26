@@ -898,9 +898,9 @@ QT test123: Verhalten bei #Hausdurchsuchung"
         assert!(posts.tweets.is_empty());
     }
 
-    // Test that quote tweets are synced without the quoted tweet when `sync_retweets=false`
+    // Test that quote tweets are synced when `sync_retweets=false`
     #[test]
-    fn quote_tweets_are_synced_without_quoted_text() {
+    fn quote_tweets_are_synced_when_ignoring_retweets() {
         let mut original_tweet = get_twitter_status();
         original_tweet.text = "Original text".to_string();
         original_tweet.user = Some(Box::new(get_twitter_user()));
