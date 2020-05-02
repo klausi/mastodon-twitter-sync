@@ -109,7 +109,9 @@ pub fn twitter_delete_older_statuses(
         // errors in that case.
         if let Err(EggModeError::TwitterError(TwitterErrors { errors: e })) = delete_result {
             // Error 144 is "No status found with that ID".
-            if e.len() != 1 || e[0].code != 144 {
+            // Error 63 is "User has been suspended".
+            // Error 179 is "Sorry, you are not authorized to see this status".
+            if e.len() != 1 || (e[0].code != 144 && e[0].code != 63 && e[0].code != 179) {
                 return Err(Error::from(EggModeError::TwitterError(TwitterErrors {
                     errors: e,
                 })));
