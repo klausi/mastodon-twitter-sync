@@ -23,7 +23,7 @@ pub fn mastodon_register() -> Result<Mastodon> {
     println!("Click this link to authorize on Mastodon: {}", url);
 
     let code = console_input("Paste the returned authorization code")?;
-    let access_token = registration.create_access_token(code.to_string())?;
+    let access_token = registration.create_access_token(code)?;
     Ok(access_token)
 }
 

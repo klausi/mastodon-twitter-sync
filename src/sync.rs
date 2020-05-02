@@ -245,7 +245,7 @@ fn tweet_shorten(text: &str, toot_url: &Option<String>) -> String {
         let new_count = character_count(&with_link, 23, 23);
         char_count = new_count;
     }
-    with_link.to_string()
+    with_link
 }
 
 // Prefix boost toots with the author and strip HTML tags.
