@@ -7,7 +7,8 @@ edition = "2018"
 [dependencies]
 chrono = ">=0.4.0"
 dissolve = ">=0.2.2"
-egg-mode = ">=0.13"
+# We are not compatible with egg-mode 0.14 yet.
+egg-mode = "0.13"
 egg-mode-text = ">=1.14.7"
 failure = ">=0.1.5"
 mammut = ">=0.13.0"
