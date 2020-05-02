@@ -41,6 +41,8 @@ pub struct TwitterConfig {
     pub delete_older_favs: bool,
     #[serde(default = "config_true_default")]
     pub sync_retweets: bool,
+    #[serde(default = "config_true_default")]
+    pub sync_quote_tweets: bool,
 }
 
 fn config_false_default() -> bool {
@@ -124,6 +126,7 @@ user_name = " "
 delete_older_statuses = true
 delete_older_favs = true
 sync_retweets = false
+sync_quote_tweets = false
 "#;
         let config: Config = toml::from_str(toml_config).unwrap();
         toml::to_string(&config).unwrap();
@@ -154,11 +157,12 @@ user_name = " "
 delete_older_statuses = true
 delete_older_favs = true
 "#;
-        // ^^notice sync_reblogs and sync_retweets is not set
+        // ^^ notice sync_{reblogs,retweets,quote_tweets} are not set
 
         let config: Config = toml::from_str(toml_config).unwrap();
         assert_eq!(config.mastodon.sync_reblogs, true);
         assert_eq!(config.twitter.sync_retweets, true);
+        assert_eq!(config.twitter.sync_quote_tweets, true);
         toml::to_string(&config).unwrap();
     }
 }

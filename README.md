@@ -60,6 +60,8 @@ delete_older_statuses = true
 delete_older_favs = true
 # Also sync retweets.
 sync_retweets = true
+# Sync quote tweets
+sync_quote_tweets = true
 ```
 
 ## Preview what's going to be synced

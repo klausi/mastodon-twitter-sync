@@ -61,6 +61,7 @@ pub fn twitter_register() -> Result<TwitterConfig> {
             delete_older_statuses: false,
             delete_older_favs: false,
             sync_retweets: true,
+            sync_quote_tweets: true,
         }),
         _ => unreachable!(),
     }

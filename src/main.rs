@@ -112,6 +112,7 @@ fn run() -> Result<()> {
     let options = SyncOptions {
         sync_reblogs: config.mastodon.sync_reblogs,
         sync_retweets: config.twitter.sync_retweets,
+        sync_quote_tweets: config.twitter.sync_quote_tweets,
     };
 
     let mut posts = determine_posts(&mastodon_statuses, &tweets, &options);

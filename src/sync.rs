@@ -32,6 +32,7 @@ pub struct NewMedia {
 pub struct SyncOptions {
     pub sync_reblogs: bool,
     pub sync_retweets: bool,
+    pub sync_quote_tweets: bool,
 }
 
 pub fn determine_posts(
@@ -46,6 +47,11 @@ pub fn determine_posts(
     'tweets: for tweet in twitter_statuses {
         if tweet.retweeted == Some(true) && !options.sync_retweets {
             // Skip retweets when sync_retweets is disabled
+            continue;
+        }
+
+        if tweet.quoted_status.is_some() && !options.sync_quote_tweets {
+            // Skip quote tweets when sync_quote_tweets is disabled
             continue;
         }
 
@@ -420,6 +426,7 @@ mod tests {
     static DEFAULT_SYNC_OPTIONS: SyncOptions = SyncOptions {
         sync_reblogs: true,
         sync_retweets: true,
+        sync_quote_tweets: true,
     };
 
     #[test]
@@ -891,6 +898,7 @@ QT test123: Verhalten bei #Hausdurchsuchung"
         let options = SyncOptions {
             sync_reblogs: true,
             sync_retweets: false,
+            sync_quote_tweets: true,
         };
 
         let posts = determine_posts(&toots, &tweets, &options);
@@ -915,6 +923,7 @@ QT test123: Verhalten bei #Hausdurchsuchung"
         let options = SyncOptions {
             sync_reblogs: true,
             sync_retweets: false,
+            sync_quote_tweets: true,
         };
         let posts = determine_posts(&toots, &tweets, &options);
 
@@ -926,6 +935,30 @@ QT test123: Verhalten bei #Hausdurchsuchung"
 
 QT test123: Original text"
         );
+    }
+
+    // Test that quote tweets are synced when `sync_quote_tweets=false`
+    #[test]
+    fn ignore_quote_tweets() {
+        let mut original_tweet = get_twitter_status();
+        original_tweet.text = "Original text".to_string();
+        original_tweet.user = Some(Box::new(get_twitter_user()));
+        original_tweet.id = 1230906460160380928;
+
+        let mut quote_tweet = get_twitter_status();
+        quote_tweet.text = "Quote tweet test".to_string();
+        quote_tweet.quoted_status = Some(Box::new(original_tweet));
+
+        let tweets = vec![quote_tweet];
+        let toots = Vec::new();
+        let options = SyncOptions {
+            sync_reblogs: true,
+            sync_retweets: true,
+            sync_quote_tweets: false,
+        };
+        let posts = determine_posts(&toots, &tweets, &options);
+        assert!(posts.toots.is_empty());
+        assert!(posts.tweets.is_empty());
     }
 
     // Test that reblogs are ignored when `sync_reblogs` is `false`
@@ -940,6 +973,7 @@ QT test123: Original text"
         let options = SyncOptions {
             sync_reblogs: false,
             sync_retweets: true,
+            sync_quote_tweets: true,
         };
 
         let posts = determine_posts(&toots, &tweets, &options);
