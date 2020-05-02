@@ -37,8 +37,8 @@ Enable automatic status/favourite deletion with config options. Example:
 delete_older_statuses = true
 # Delete Mastodon favourites that are older than 90 days
 delete_older_favs = true
-# Do not sync reblogs (boosts)
-sync_reblogs = false
+# Also sync reblogs (boosts).
+sync_reblogs = true
 
 [mastodon.app]
 base = "https://mastodon.social"
@@ -58,8 +58,8 @@ user_name = "example"
 delete_older_statuses = true
 # Delete Twitter likes that are older than 90 days
 delete_older_favs = true
-# Do not sync retweets
-sync_retweets = false
+# Also sync retweets.
+sync_retweets = true
 ```
 
 ## Preview what's going to be synced
