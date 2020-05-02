@@ -60,6 +60,7 @@ pub fn twitter_register() -> Result<TwitterConfig> {
             user_name: screen_name,
             delete_older_statuses: false,
             delete_older_favs: false,
+            sync_retweets: true,
         }),
         _ => unreachable!(),
     }
