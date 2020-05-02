@@ -22,3 +22,6 @@ tempfile = ">=3"
 toml = ">=0.4.5"
 serde_json = ">=1.0.6"
 structopt = ">=0.2"
+
+[profile.release]
+lto = true
