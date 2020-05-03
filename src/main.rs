@@ -4,7 +4,6 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::process;
 use structopt::StructOpt;
-use tokio::runtime::current_thread::block_on_all;
 
 use crate::args::*;
 use crate::config::*;
@@ -26,14 +25,16 @@ mod post;
 mod registration;
 mod sync;
 
-fn run() -> Result<()> {
+async fn run() -> Result<()> {
     let args = Args::from_args();
 
     let config = match fs::read_to_string(&args.config) {
         Ok(config) => config_load(&config)?,
         Err(_) => {
             let mastodon = mastodon_register().context("Failed to setup mastodon account")?;
-            let twitter_config = twitter_register().context("Failed to setup twitter account")?;
+            let twitter_config = twitter_register()
+                .await
+                .context("Failed to setup twitter account")?;
             let config = Config {
                 mastodon: MastodonConfig {
                     app: (*mastodon).clone(),
@@ -88,7 +89,7 @@ fn run() -> Result<()> {
     let timeline = egg_mode::tweet::user_timeline(config.twitter.user_id, false, true, &token)
         .with_page_size(50);
 
-    let (timeline, first_tweets) = match block_on_all(timeline.start()) {
+    let (timeline, first_tweets) = match timeline.start().await {
         Ok(tweets) => tweets,
         Err(e) => {
             println!("Error fetching tweets from Twitter: {:#?}", e);
@@ -99,7 +100,7 @@ fn run() -> Result<()> {
     // We might have only one tweet because of filtering out reply tweets. Fetch
     // some more tweets to make sure we have enough for comparing.
     if tweets.len() < 50 {
-        let (_, mut next_tweets) = match block_on_all(timeline.older(None)) {
+        let (_, mut next_tweets) = match timeline.older(None).await {
             Ok(tweets) => tweets,
             Err(e) => {
                 println!("Error fetching older tweets from Twitter: {:#?}", e);
@@ -122,7 +123,7 @@ fn run() -> Result<()> {
         if !args.skip_existing_posts {
             println!("Posting to Mastodon: {}", toot.text);
             if !args.dry_run {
-                if let Err(e) = post_to_mastodon(&mastodon, toot) {
+                if let Err(e) = post_to_mastodon(&mastodon, toot).await {
                     println!("Error posting toot to Mastodon: {:#?}", e);
                     process::exit(5);
                 }
@@ -134,7 +135,7 @@ fn run() -> Result<()> {
         if !args.skip_existing_posts {
             println!("Posting to Twitter: {}", tweet.text);
             if !args.dry_run {
-                if let Err(e) = post_to_twitter(&token, tweet) {
+                if let Err(e) = post_to_twitter(&token, tweet).await {
                     println!("Error posting tweet to Twitter: {:#?}", e);
                     process::exit(6);
                 }
@@ -149,6 +150,7 @@ fn run() -> Result<()> {
     }
     if config.twitter.delete_older_statuses {
         twitter_delete_older_statuses(config.twitter.user_id, &token, args.dry_run)
+            .await
             .context("Failed to delete old twitter statuses")?;
     }
 
@@ -159,14 +161,16 @@ fn run() -> Result<()> {
     }
     if config.twitter.delete_older_favs {
         twitter_delete_older_favs(config.twitter.user_id, &token, args.dry_run)
+            .await
             .context("Failed to delete old twitter favs")?;
     }
 
     Ok(())
 }
 
-fn main() {
-    if let Err(err) = run() {
+#[tokio::main]
+async fn main() {
+    if let Err(err) = run().await {
         eprintln!("Error: {}", err);
         for cause in err.iter_chain().skip(1) {
             eprintln!("Because: {}", cause);

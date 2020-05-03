@@ -7,7 +7,6 @@ use mammut::Error as MammutError;
 use mammut::Mastodon;
 use std::collections::BTreeMap;
 use std::str::FromStr;
-use tokio::runtime::current_thread::block_on_all;
 
 use crate::config::*;
 
@@ -77,7 +76,7 @@ fn mastodon_fetch_fav_dates(
 }
 
 // Delete old likes of this account that are older than 90 days.
-pub fn twitter_delete_older_favs(
+pub async fn twitter_delete_older_favs(
     user_id: u64,
     token: &egg_mode::Token,
     dry_run: bool,
@@ -85,7 +84,7 @@ pub fn twitter_delete_older_favs(
     // In order not to fetch old likes every time keep them in a cache file
     // keyed by their dates.
     let cache_file = "twitter_fav_cache.json";
-    let dates = twitter_load_fav_dates(user_id, token, cache_file)?;
+    let dates = twitter_load_fav_dates(user_id, token, cache_file).await?;
     let mut remove_dates = Vec::new();
     let three_months_ago = Utc::now() - Duration::days(90);
     for (delete_count, (date, tweet_id)) in dates.range(..three_months_ago).enumerate() {
@@ -96,16 +95,17 @@ pub fn twitter_delete_older_favs(
         }
 
         remove_dates.push(date);
-        let deletion = egg_mode::tweet::unlike(*tweet_id, token);
-        let delete_result = block_on_all(deletion);
+        let delete_result = egg_mode::tweet::unlike(*tweet_id, token).await;
         // The like could have been deleted already by the user, ignore API
         // errors in that case.
-        if let Err(EggModeError::TwitterError(TwitterErrors { errors: e })) = delete_result {
+        if let Err(EggModeError::TwitterError(headers, TwitterErrors { errors: e })) = delete_result
+        {
             // Error 144 is "No status found with that ID".
             if e.len() != 1 || e[0].code != 144 {
-                return Err(Error::from(EggModeError::TwitterError(TwitterErrors {
-                    errors: e,
-                })));
+                return Err(Error::from(EggModeError::TwitterError(
+                    headers,
+                    TwitterErrors { errors: e },
+                )));
             }
         } else {
             delete_result?;
@@ -122,18 +122,18 @@ pub fn twitter_delete_older_favs(
     remove_dates_from_cache(remove_dates, &dates, cache_file)
 }
 
-fn twitter_load_fav_dates(
+async fn twitter_load_fav_dates(
     user_id: u64,
     token: &egg_mode::Token,
     cache_file: &str,
 ) -> Result<BTreeMap<DateTime<Utc>, u64>> {
     match load_dates_from_cache(cache_file)? {
         Some(dates) => Ok(dates),
-        None => twitter_fetch_fav_dates(user_id, token, cache_file),
+        None => twitter_fetch_fav_dates(user_id, token, cache_file).await,
     }
 }
 
-fn twitter_fetch_fav_dates(
+async fn twitter_fetch_fav_dates(
     user_id: u64,
     token: &egg_mode::Token,
     cache_file: &str,
@@ -144,11 +144,11 @@ fn twitter_fetch_fav_dates(
     let mut max_id = None;
     let mut dates = BTreeMap::new();
     loop {
-        let tweets = block_on_all(timeline.call(None, max_id))?;
+        let tweets = timeline.call(None, max_id).await?;
         if tweets.is_empty() {
             break;
         }
-        for tweet in tweets {
+        for tweet in tweets.iter() {
             dates.insert(tweet.created_at, tweet.id);
             if let Some(max) = max_id {
                 if tweet.id < max {

@@ -2,7 +2,6 @@ use crate::errors::*;
 use mammut::apps::{AppBuilder, Scopes};
 use mammut::{Mastodon, Registration};
 use std::io;
-use tokio::runtime::current_thread::block_on_all;
 
 use super::*;
 
@@ -23,11 +22,11 @@ pub fn mastodon_register() -> Result<Mastodon> {
     println!("Click this link to authorize on Mastodon: {}", url);
 
     let code = console_input("Paste the returned authorization code")?;
-    let access_token = registration.create_access_token(code.to_string())?;
+    let access_token = registration.create_access_token(code)?;
     Ok(access_token)
 }
 
-pub fn twitter_register() -> Result<TwitterConfig> {
+pub async fn twitter_register() -> Result<TwitterConfig> {
     println!("Go to https://developer.twitter.com/en/apps/create to create a new Twitter app.");
     println!("Name: Mastodon Twitter Sync");
     println!("Description: Synchronizes Tweets and Toots");
@@ -37,7 +36,7 @@ pub fn twitter_register() -> Result<TwitterConfig> {
     let consumer_secret = console_input("Paste your consumer secret")?;
 
     let con_token = egg_mode::KeyPair::new(consumer_key.clone(), consumer_secret.clone());
-    let request_token = block_on_all(egg_mode::request_token(&con_token, "oob"))?;
+    let request_token = egg_mode::request_token(&con_token, "oob").await?;
     println!(
         "Click this link to authorize on Twitter: {}",
         egg_mode::authorize_url(&request_token)
@@ -45,7 +44,7 @@ pub fn twitter_register() -> Result<TwitterConfig> {
     let pin = console_input("Paste your PIN")?;
 
     let (token, user_id, screen_name) =
-        block_on_all(egg_mode::access_token(con_token, &request_token, pin))?;
+        egg_mode::access_token(con_token, &request_token, pin).await?;
 
     match token {
         egg_mode::Token::Access {
