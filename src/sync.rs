@@ -990,10 +990,7 @@ QT test123: Original text"
             retweet_count: 0,
             retweeted: None,
             retweeted_status: None,
-            source: TweetSource {
-                name: "".to_string(),
-                url: "".to_string(),
-            },
+            source: None,
             text: "".to_string(),
             truncated: false,
             user: None,
@@ -1107,10 +1104,10 @@ QT test123: Original text"
             retweet_count: 0,
             retweeted: Some(false),
             retweeted_status: None,
-            source: TweetSource {
+            source: Some(TweetSource {
                 name: "Twitter Web Client".to_string(),
                 url: "http://twitter.com".to_string(),
-            },
+            }),
             text: "Verhalten bei #Hausdurchsuchung https://t.co/AhiyYybK1m".to_string(),
             truncated: false,
             user: None,

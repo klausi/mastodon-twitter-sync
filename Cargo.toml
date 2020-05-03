@@ -7,19 +7,16 @@ edition = "2018"
 [dependencies]
 chrono = ">=0.4.0"
 dissolve = ">=0.2.2"
-# We are not compatible with egg-mode 0.14 yet.
-egg-mode = "0.13"
+egg-mode = ">=0.14"
 egg-mode-text = ">=1.14.7"
 failure = ">=0.1.5"
 mammut = ">=0.13.0"
 mime = ">=0.3.13"
 regex = ">=0.2.2"
-reqwest = { version = ">=0.10", features = ["blocking"] }
+reqwest = ">=0.10"
 serde = { version = ">=1.0", features = ["derive"] }
-# Tokio is frozen on 0.1 until egg-mode is updated for that. See
-# https://github.com/QuietMisdreavus/twitter-rs/pull/73
-tokio = "0.1"
 tempfile = ">=3"
 toml = ">=0.4.5"
 serde_json = ">=1.0.6"
 structopt = ">=0.2"
+tokio = { version = ">=0.2", features = ["fs"] }
