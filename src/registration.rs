@@ -1,6 +1,7 @@
 use crate::errors::*;
-use mammut::apps::{AppBuilder, Scopes};
-use mammut::{Mastodon, Registration};
+use elefren::apps::AppBuilder;
+use elefren::scopes::Scopes;
+use elefren::{Mastodon, Registration};
 use std::io;
 
 use super::*;

@@ -1,7 +1,7 @@
 use crate::errors::*;
 use egg_mode::tweet::Tweet;
 use egg_mode_text::character_count;
-use mammut::entities::status::Status;
+use elefren::entities::status::Status;
 use regex::Regex;
 use std::collections::HashSet;
 use std::fs;

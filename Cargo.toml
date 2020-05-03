@@ -20,6 +20,7 @@ toml = ">=0.4.5"
 serde_json = ">=1.0.6"
 structopt = ">=0.2"
 tokio = { version = ">=0.2", features = ["fs"] }
+elefren = { version = ">=0.21", features = ["toml"] }
 
 [profile.release]
 # Enabled to have a smaller binary size.

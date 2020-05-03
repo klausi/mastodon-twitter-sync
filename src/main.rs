@@ -1,9 +1,10 @@
-use mammut::{Mastodon, StatusesRequest};
+use elefren::{Mastodon, StatusesRequest};
 use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
 use std::process;
 use structopt::StructOpt;
+use elefren::prelude::*;
 
 use crate::args::*;
 use crate::config::*;
@@ -56,7 +57,7 @@ async fn run() -> Result<()> {
         }
     };
 
-    let mastodon = Mastodon::from_data(config.mastodon.app);
+    let mastodon = Mastodon::from(config.mastodon.app);
 
     let account = match mastodon.verify_credentials() {
         Ok(account) => account,
