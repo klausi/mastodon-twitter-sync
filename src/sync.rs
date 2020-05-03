@@ -423,12 +423,6 @@ mod tests {
     use egg_mode::tweet::{ExtendedTweetEntities, TweetEntities, TweetSource};
     use egg_mode::user::{TwitterUser, UserEntities, UserEntityDetail};
 
-    static DEFAULT_SYNC_OPTIONS: SyncOptions = SyncOptions {
-        sync_reblogs: true,
-        sync_retweets: true,
-        sync_quote_tweets: true,
-    };
-
     #[test]
     fn tweet_shortening() {
         let toot = "#MASTODON POST PRIVACY - who can see your post?
@@ -491,7 +485,7 @@ UNLISTED 🔓 ✅ Tagged people
 
         let tweets = vec![tweet];
         let statuses = vec![status];
-        let posts = determine_posts(&statuses, &tweets, &DEFAULT_SYNC_OPTIONS);
+        let posts = determine_posts(&statuses, &tweets, &get_sync_options());
         assert!(posts.toots.is_empty());
         assert!(posts.tweets.is_empty());
     }
@@ -513,7 +507,7 @@ UNLISTED 🔓 ✅ Tagged people
 
         let tweets = vec![tweet];
         let statuses = vec![status];
-        let posts = determine_posts(&statuses, &tweets, &DEFAULT_SYNC_OPTIONS);
+        let posts = determine_posts(&statuses, &tweets, &get_sync_options());
         assert!(posts.toots.is_empty());
         assert!(posts.tweets.is_empty());
     }
@@ -524,7 +518,7 @@ UNLISTED 🔓 ✅ Tagged people
     fn mastodon_html_decode() {
         let mut status = get_mastodon_status();
         status.content = "<p>You &amp; me!</p>".to_string();
-        let posts = determine_posts(&vec![status], &Vec::new(), &DEFAULT_SYNC_OPTIONS);
+        let posts = determine_posts(&vec![status], &Vec::new(), &get_sync_options());
         assert_eq!(posts.tweets[0].text, "You & me!");
     }
 
@@ -534,7 +528,7 @@ UNLISTED 🔓 ✅ Tagged people
     fn twitter_html_decode() {
         let mut status = get_twitter_status();
         status.text = "You &amp; me!".to_string();
-        let posts = determine_posts(&Vec::new(), &vec![status], &DEFAULT_SYNC_OPTIONS);
+        let posts = determine_posts(&Vec::new(), &vec![status], &get_sync_options());
         assert_eq!(posts.toots[0].text, "You & me!");
     }
 
@@ -548,7 +542,7 @@ UNLISTED 🔓 ✅ Tagged people
         status.reblog = Some(Box::new(reblog));
         status.reblogged = Some(true);
 
-        let posts = determine_posts(&vec![status], &Vec::new(), &DEFAULT_SYNC_OPTIONS);
+        let posts = determine_posts(&vec![status], &Vec::new(), &get_sync_options());
         assert_eq!(posts.tweets[0].text, "RT example: Some example toooot!");
     }
 
@@ -562,7 +556,7 @@ UNLISTED 🔓 ✅ Tagged people
         status.reblog = Some(Box::new(reblog));
         status.reblogged = Some(true);
 
-        let posts = determine_posts(&vec![status], &Vec::new(), &DEFAULT_SYNC_OPTIONS);
+        let posts = determine_posts(&vec![status], &Vec::new(), &get_sync_options());
         assert_eq!(posts.tweets[0].text, "RT example: longer than 280 characters longer than 280 characters longer than 280 characters longer than 280 characters longer than 280 characters longer than 280 characters longer than 280 characters longer than… https://example.com/a/b/c/5");
     }
 
@@ -581,7 +575,7 @@ UNLISTED 🔓 ✅ Tagged people
 
         let tweets = vec![tweet];
         let statuses = vec![status];
-        let posts = determine_posts(&statuses, &tweets, &DEFAULT_SYNC_OPTIONS);
+        let posts = determine_posts(&statuses, &tweets, &get_sync_options());
         assert!(posts.toots.is_empty());
         assert!(posts.tweets.is_empty());
     }
@@ -612,7 +606,7 @@ UNLISTED 🔓 ✅ Tagged people
         status.content = "@Test Hello! http://example.com".to_string();
         let tweets = Vec::new();
         let statuses = vec![status];
-        let posts = determine_posts(&statuses, &tweets, &DEFAULT_SYNC_OPTIONS);
+        let posts = determine_posts(&statuses, &tweets, &get_sync_options());
         assert!(posts.toots.is_empty());
         assert!(posts.tweets.is_empty());
     }
@@ -624,7 +618,7 @@ UNLISTED 🔓 ✅ Tagged people
         status.content = "Österreich".to_string();
         let tweets = Vec::new();
         let statuses = vec![status];
-        let posts = determine_posts(&statuses, &tweets, &DEFAULT_SYNC_OPTIONS);
+        let posts = determine_posts(&statuses, &tweets, &get_sync_options());
         assert!(posts.toots.is_empty());
         assert_eq!(posts.tweets[0].text, "Österreich");
     }
@@ -662,7 +656,7 @@ UNLISTED 🔓 ✅ Tagged people
     fn pictures_in_tweet() {
         let tweets = vec![get_twitter_status_media()];
         let statuses = Vec::new();
-        let posts = determine_posts(&statuses, &tweets, &DEFAULT_SYNC_OPTIONS);
+        let posts = determine_posts(&statuses, &tweets, &get_sync_options());
 
         let status = &posts.toots[0];
         assert_eq!(status.text, "Verhalten bei #Hausdurchsuchung");
@@ -682,7 +676,7 @@ UNLISTED 🔓 ✅ Tagged people
         let tweet = get_twitter_status_video();
         let tweets = vec![tweet];
         let statuses = Vec::new();
-        let posts = determine_posts(&statuses, &tweets, &DEFAULT_SYNC_OPTIONS);
+        let posts = determine_posts(&statuses, &tweets, &get_sync_options());
 
         let status = &posts.toots[0];
         assert_eq!(status.text, "Verhalten bei #Hausdurchsuchung");
@@ -702,7 +696,7 @@ UNLISTED 🔓 ✅ Tagged people
     fn pictures_in_toot() {
         let statuses = vec![get_mastodon_status_media()];
         let tweets = Vec::new();
-        let posts = determine_posts(&statuses, &tweets, &DEFAULT_SYNC_OPTIONS);
+        let posts = determine_posts(&statuses, &tweets, &get_sync_options());
 
         let tweet = &posts.tweets[0];
         assert_eq!(tweet.text, "test image");
@@ -727,7 +721,7 @@ UNLISTED 🔓 ✅ Tagged people
 
         let tweets = vec![retweet];
         let toots = Vec::new();
-        let posts = determine_posts(&toots, &tweets, &DEFAULT_SYNC_OPTIONS);
+        let posts = determine_posts(&toots, &tweets, &get_sync_options());
 
         let sync_toot = &posts.toots[0];
         assert_eq!(
@@ -749,7 +743,7 @@ UNLISTED 🔓 ✅ Tagged people
 
         let tweets = Vec::new();
         let toots = vec![boost];
-        let posts = determine_posts(&toots, &tweets, &DEFAULT_SYNC_OPTIONS);
+        let posts = determine_posts(&toots, &tweets, &get_sync_options());
 
         let sync_tweet = &posts.tweets[0];
         assert_eq!(sync_tweet.text, "RT example: test image");
@@ -784,7 +778,7 @@ UNLISTED 🔓 ✅ Tagged people
 
         let tweets = vec![quote_tweet];
         let toots = Vec::new();
-        let posts = determine_posts(&toots, &tweets, &DEFAULT_SYNC_OPTIONS);
+        let posts = determine_posts(&toots, &tweets, &get_sync_options());
 
         let sync_toot = &posts.toots[0];
         assert_eq!(
@@ -824,7 +818,7 @@ QT test123: Original text"
 
         let tweets = vec![quote_tweet];
         let toots = Vec::new();
-        let posts = determine_posts(&toots, &tweets, &DEFAULT_SYNC_OPTIONS);
+        let posts = determine_posts(&toots, &tweets, &get_sync_options());
 
         let sync_toot = &posts.toots[0];
         assert_eq!(
@@ -866,7 +860,7 @@ QT test123: Original text"
 
         let tweets = vec![quote_tweet];
         let toots = Vec::new();
-        let posts = determine_posts(&toots, &tweets, &DEFAULT_SYNC_OPTIONS);
+        let posts = determine_posts(&toots, &tweets, &get_sync_options());
 
         let sync_toot = &posts.toots[0];
         assert_eq!(
@@ -895,11 +889,8 @@ QT test123: Verhalten bei #Hausdurchsuchung"
 
         let tweets = vec![retweet];
         let toots = Vec::new();
-        let options = SyncOptions {
-            sync_reblogs: true,
-            sync_retweets: false,
-            sync_quote_tweets: true,
-        };
+        let mut options = get_sync_options();
+        options.sync_retweets = false;
 
         let posts = determine_posts(&toots, &tweets, &options);
         assert!(posts.toots.is_empty());
@@ -920,11 +911,9 @@ QT test123: Verhalten bei #Hausdurchsuchung"
 
         let tweets = vec![quote_tweet];
         let toots = Vec::new();
-        let options = SyncOptions {
-            sync_reblogs: true,
-            sync_retweets: false,
-            sync_quote_tweets: true,
-        };
+        let mut options = get_sync_options();
+        options.sync_retweets = false;
+
         let posts = determine_posts(&toots, &tweets, &options);
 
         let sync_toot = &posts.toots[0];
@@ -951,11 +940,9 @@ QT test123: Original text"
 
         let tweets = vec![quote_tweet];
         let toots = Vec::new();
-        let options = SyncOptions {
-            sync_reblogs: true,
-            sync_retweets: true,
-            sync_quote_tweets: false,
-        };
+        let mut options = get_sync_options();
+        options.sync_quote_tweets = false;
+
         let posts = determine_posts(&toots, &tweets, &options);
         assert!(posts.toots.is_empty());
         assert!(posts.tweets.is_empty());
@@ -970,11 +957,8 @@ QT test123: Original text"
 
         let tweets = Vec::new();
         let toots = vec![boost];
-        let options = SyncOptions {
-            sync_reblogs: false,
-            sync_retweets: true,
-            sync_quote_tweets: true,
-        };
+        let mut options = get_sync_options();
+        options.sync_reblogs = false;
 
         let posts = determine_posts(&toots, &tweets, &options);
         assert!(posts.toots.is_empty());
@@ -1236,5 +1220,17 @@ QT test123: Original text"
             withheld_in_countries: None,
             withheld_scope: None,
         }
+    }
+
+    /**
+     * Create default sync options to be used as the base configuration
+     * in tests.
+     */
+    fn get_sync_options() -> SyncOptions {
+        return SyncOptions {
+            sync_reblogs: true,
+            sync_retweets: true,
+            sync_quote_tweets: true,
+        };
     }
 }
