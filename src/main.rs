@@ -5,6 +5,8 @@ use std::io::prelude::*;
 use std::process;
 use structopt::StructOpt;
 
+use log::debug;
+
 use crate::args::*;
 use crate::config::*;
 use crate::delete_favs::*;
@@ -26,7 +28,10 @@ mod registration;
 mod sync;
 
 async fn run() -> Result<()> {
+    env_logger::init();
+
     let args = Args::from_args();
+    debug!("running with args {:?}", args);
 
     let config = match fs::read_to_string(&args.config) {
         Ok(config) => config_load(&config)?,
