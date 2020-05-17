@@ -264,7 +264,10 @@ fn mastodon_toot_get_text(toot: &Status) -> String {
 // Ensure that sync posts have not been made before to prevent syncing loops.
 // Use a cache file to temporarily store posts and compare them on the next
 // invocation.
-pub fn filter_posted_before(posts: StatusUpdates, post_cache: &HashSet<String>) -> Result<StatusUpdates> {
+pub fn filter_posted_before(
+    posts: StatusUpdates,
+    post_cache: &HashSet<String>,
+) -> Result<StatusUpdates> {
     // If there are no status updates then we don't need to check anything.
     if posts.toots.is_empty() && posts.tweets.is_empty() {
         return Ok(posts);
