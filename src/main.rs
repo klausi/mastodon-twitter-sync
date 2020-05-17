@@ -122,30 +122,49 @@ async fn run() -> Result<()> {
 
     let mut posts = determine_posts(&mastodon_statuses, &tweets, &options);
 
-    posts = filter_posted_before(posts, args.dry_run)?;
+    // Prevent double posting with a post cache that records each new status
+    // message.
+    let post_cache_file = "post_cache.json";
+    let mut post_cache = read_post_cache(post_cache_file);
+    let mut cache_changed = false;
+    posts = filter_posted_before(posts, &post_cache)?;
 
     for toot in posts.toots {
         if !args.skip_existing_posts {
             println!("Posting to Mastodon: {}", toot.text);
             if !args.dry_run {
-                if let Err(e) = post_to_mastodon(&mastodon, toot).await {
+                if let Err(e) = post_to_mastodon(&mastodon, &toot).await {
                     println!("Error posting toot to Mastodon: {:#?}", e);
                     process::exit(5);
                 }
             }
         }
+        // Posting API call was successful: store text in cache to prevent any
+        // double posting next time.
+        post_cache.insert(toot.text);
+        cache_changed = true;
     }
 
     for tweet in posts.tweets {
         if !args.skip_existing_posts {
             println!("Posting to Twitter: {}", tweet.text);
             if !args.dry_run {
-                if let Err(e) = post_to_twitter(&token, tweet).await {
+                if let Err(e) = post_to_twitter(&token, &tweet).await {
                     println!("Error posting tweet to Twitter: {:#?}", e);
                     process::exit(6);
                 }
             }
         }
+        // Posting API call was successful: store text in cache to prevent any
+        // double posting next time.
+        post_cache.insert(tweet.text);
+        cache_changed = true;
+    }
+
+    // Write out the cache file if necessary.
+    if !args.dry_run && cache_changed {
+        let json = serde_json::to_string(&post_cache)?;
+        fs::write(post_cache_file, json.as_bytes())?;
     }
 
     // Delete old mastodon statuses if that option is enabled.

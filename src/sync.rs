@@ -264,51 +264,42 @@ fn mastodon_toot_get_text(toot: &Status) -> String {
 // Ensure that sync posts have not been made before to prevent syncing loops.
 // Use a cache file to temporarily store posts and compare them on the next
 // invocation.
-pub fn filter_posted_before(posts: StatusUpdates, dry_run: bool) -> Result<StatusUpdates> {
-    // If there are not status updates then we don't need to check anything.
+pub fn filter_posted_before(posts: StatusUpdates, post_cache: &HashSet<String>) -> Result<StatusUpdates> {
+    // If there are no status updates then we don't need to check anything.
     if posts.toots.is_empty() && posts.tweets.is_empty() {
         return Ok(posts);
     }
 
-    let cache_file = "post_cache.json";
-    let mut cache = read_post_cache(cache_file);
     let mut filtered_posts = StatusUpdates {
         tweets: Vec::new(),
         toots: Vec::new(),
     };
     for tweet in posts.tweets {
-        if cache.contains(&tweet.text) {
+        if post_cache.contains(&tweet.text) {
             println!(
                 "Error: preventing double posting to Twitter: {}",
                 tweet.text
             );
         } else {
             filtered_posts.tweets.push(tweet.clone());
-            cache.insert(tweet.text);
         }
     }
     for toot in posts.toots {
-        if cache.contains(&toot.text) {
+        if post_cache.contains(&toot.text) {
             println!(
                 "Error: preventing double posting to Mastodon: {}",
                 toot.text
             );
         } else {
             filtered_posts.toots.push(toot.clone());
-            cache.insert(toot.text);
         }
-    }
-
-    if !dry_run {
-        let json = serde_json::to_string(&cache)?;
-        fs::write(cache_file, json.as_bytes())?;
     }
 
     Ok(filtered_posts)
 }
 
-// Read the JSON encoded cache file from disk or provide en empty default cache.
-fn read_post_cache(cache_file: &str) -> HashSet<String> {
+// Read the JSON encoded cache file from disk or provide an empty default cache.
+pub fn read_post_cache(cache_file: &str) -> HashSet<String> {
     match fs::read_to_string(cache_file) {
         Ok(json) => {
             match serde_json::from_str::<HashSet<String>>(&json) {

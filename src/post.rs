@@ -15,10 +15,10 @@ use tempfile::NamedTempFile;
 use tokio::fs::File;
 use tokio::prelude::*;
 
-pub async fn post_to_mastodon(mastodon: &Mastodon, toot: NewStatus) -> Result<Status> {
+pub async fn post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus) -> Result<Status> {
     let mut status = StatusBuilder::new(toot.text.clone());
     // Post attachments first, if there are any.
-    for attachment in toot.attachments {
+    for attachment in &toot.attachments {
         // Because we use async for egg-mode we also need to use reqwest in
         // async mode. Otherwise we get double async executor errors.
         let response = reqwest::get(&attachment.attachment_url)
@@ -36,11 +36,11 @@ pub async fn post_to_mastodon(mastodon: &Mastodon, toot: NewStatus) -> Result<St
         let mut file = File::create(&path).await?;
         file.write_all(&response.bytes().await?).await?;
 
-        let attachment = match attachment.alt_text {
+        let attachment = match &attachment.alt_text {
             None => mastodon.media(path.into())?,
             Some(description) => mastodon.media(MediaBuilder {
                 file: path.into(),
-                description: Some(description.into()),
+                description: Some(description.clone().into()),
                 focus: None,
             })?,
         };
@@ -63,9 +63,9 @@ pub async fn post_to_mastodon(mastodon: &Mastodon, toot: NewStatus) -> Result<St
 }
 
 /// Send a new status update to Twitter, including attachments.
-pub async fn post_to_twitter(token: &Token, tweet: NewStatus) -> Result<Tweet> {
-    let mut draft = DraftTweet::new(tweet.text);
-    for attachment in tweet.attachments {
+pub async fn post_to_twitter(token: &Token, tweet: &NewStatus) -> Result<Tweet> {
+    let mut draft = DraftTweet::new(tweet.text.clone());
+    for attachment in &tweet.attachments {
         let response = reqwest::get(&attachment.attachment_url).await?;
         let media_type = response
             .headers()
@@ -76,7 +76,7 @@ pub async fn post_to_twitter(token: &Token, tweet: NewStatus) -> Result<Tweet> {
         let bytes = response.bytes().await?;
         let media_handle = upload_media(&bytes, &media_type, &token).await?;
         draft.add_media(media_handle.id.clone());
-        if let Some(alt_text) = attachment.alt_text {
+        if let Some(alt_text) = &attachment.alt_text {
             set_metadata(&media_handle.id, &alt_text, &token).await?;
         }
     }
