@@ -163,7 +163,7 @@ async fn run() -> Result<()> {
 
     // Write out the cache file if necessary.
     if !args.dry_run && cache_changed {
-        let json = serde_json::to_string(&post_cache)?;
+        let json = serde_json::to_string_pretty(&post_cache)?;
         fs::write(post_cache_file, json.as_bytes())?;
     }
 

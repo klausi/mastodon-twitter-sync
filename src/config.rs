@@ -61,7 +61,7 @@ pub fn load_dates_from_cache(cache_file: &str) -> Result<Option<BTreeMap<DateTim
 }
 
 pub fn save_dates_to_cache(cache_file: &str, dates: &BTreeMap<DateTime<Utc>, u64>) -> Result<()> {
-    let json = serde_json::to_string(&dates)?;
+    let json = serde_json::to_string_pretty(&dates)?;
     fs::write(cache_file, json.as_bytes())?;
     Ok(())
 }
