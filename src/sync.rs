@@ -879,10 +879,8 @@ QT test123: Verhalten bei #Hausdurchsuchung"
 
         let tweets = vec![retweet];
         let toots = Vec::new();
-        let options = SyncOptions {
-            sync_reblogs: true,
-            sync_retweets: false,
-        };
+        let mut options = DEFAULT_SYNC_OPTIONS.clone();
+        options.sync_retweets = false;
 
         let posts = determine_posts(&toots, &tweets, &options);
         assert!(posts.toots.is_empty());
@@ -903,10 +901,9 @@ QT test123: Verhalten bei #Hausdurchsuchung"
 
         let tweets = vec![quote_tweet];
         let toots = Vec::new();
-        let options = SyncOptions {
-            sync_reblogs: true,
-            sync_retweets: false,
-        };
+        let mut options = DEFAULT_SYNC_OPTIONS.clone();
+        options.sync_retweets = false;
+
         let posts = determine_posts(&toots, &tweets, &options);
 
         let sync_toot = &posts.toots[0];
@@ -928,10 +925,8 @@ QT test123: Original text"
 
         let tweets = Vec::new();
         let toots = vec![boost];
-        let options = SyncOptions {
-            sync_reblogs: false,
-            sync_retweets: true,
-        };
+        let mut options = DEFAULT_SYNC_OPTIONS.clone();
+        options.sync_reblogs = false;
 
         let posts = determine_posts(&toots, &tweets, &options);
         assert!(posts.toots.is_empty());
