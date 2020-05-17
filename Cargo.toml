@@ -1,6 +1,6 @@
 [package]
 name = "mastodon-twitter-sync"
-version = "1.3.3"
+version = "1.4.0"
 authors = ["Klaus Purer <klaus.purer@protonmail.ch>"]
 edition = "2018"
 
