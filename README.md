@@ -39,7 +39,7 @@ delete_older_statuses = true
 delete_older_favs = true
 # Also sync reblogs (boosts).
 sync_reblogs = true
-# Restrict sync to a hashtag (remove/leave empty if not desired)
+# Restrict sync to a hashtag (leave empty if not desired)
 sync_hashtag = "#sync"
 
 [mastodon.app]
@@ -62,7 +62,7 @@ delete_older_statuses = true
 delete_older_favs = true
 # Also sync retweets.
 sync_retweets = true
-# Restrict sync to a hashtag (remove/leave empty if not desired)
+# Restrict sync to a hashtag (leave empty if not desired)
 sync_hashtag = "#sync"
 ```
 
