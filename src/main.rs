@@ -118,6 +118,8 @@ async fn run() -> Result<()> {
     let options = SyncOptions {
         sync_reblogs: config.mastodon.sync_reblogs,
         sync_retweets: config.twitter.sync_retweets,
+        sync_hashtag_mastodon: config.mastodon.sync_hashtag,
+        sync_hashtag_twitter: config.twitter.sync_hashtag,
     };
 
     let mut posts = determine_posts(&mastodon_statuses, &tweets, &options);
