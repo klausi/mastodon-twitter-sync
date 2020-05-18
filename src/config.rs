@@ -24,6 +24,7 @@ pub struct MastodonConfig {
     pub delete_older_favs: bool,
     #[serde(default = "config_true_default")]
     pub sync_reblogs: bool,
+    pub sync_hashtag: str,
     pub app: Data,
 }
 
@@ -41,6 +42,7 @@ pub struct TwitterConfig {
     pub delete_older_favs: bool,
     #[serde(default = "config_true_default")]
     pub sync_retweets: bool,
+    pub sync_hashtag: str,
 }
 
 fn config_false_default() -> bool {
@@ -108,6 +110,7 @@ mod tests {
 delete_older_statuses = true
 delete_older_favs = true
 sync_reblogs = false
+sync_hashtag = ""
 [mastodon.app]
 base = "https://mastodon.social"
 client_id = "abcd"
@@ -124,6 +127,7 @@ user_name = " "
 delete_older_statuses = true
 delete_older_favs = true
 sync_retweets = false
+sync_hashtag = ""
 "#;
         let config: Config = toml::from_str(toml_config).unwrap();
         toml::to_string(&config).unwrap();
