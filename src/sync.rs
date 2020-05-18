@@ -58,11 +58,22 @@ pub fn determine_posts(
                 break 'tweets;
             }
         }
-        // The tweet is not on Mastodon yet, let's post it.
-        updates.toots.push(NewStatus {
-            text: tweet_unshorten_decode(tweet),
-            attachments: tweet_get_attachments(tweet),
-        });
+
+        // The tweet is not on Mastodon yet, next step
+
+        // Fetch the tweet text into a String object
+        let decoded_tweet = tweet_unshorten_decode(tweet);
+        // Check if hashtag filtering is enabled and if the tweet matches
+        if !options.sync_hashtag_twitter.is_empty() && !decoded_tweet.contains(&options.sync_hashtag_twitter) {
+            // Skip if a sync hashtag is set and the string doesn't match
+            continue;
+        // Hashtag matches or sync hashtag not set, let's post it.
+        } else {
+            updates.toots.push(NewStatus {
+                text: decoded_tweet,
+                attachments: tweet_get_attachments(tweet),
+            });
+        }
     }
 
     'toots: for toot in mastodon_statuses {
