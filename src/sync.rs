@@ -98,11 +98,20 @@ pub fn determine_posts(
                 break 'toots;
             }
         }
-        // The toot is not on Twitter yet, let's post it.
-        updates.tweets.push(NewStatus {
-            text: post,
-            attachments: toot_get_attachments(toot),
-        });
+
+        // The toot is not on Twitter yet, next step
+
+        // Check if hashtag filtering is enabled and if the toot matches
+        if !options.sync_hashtag_mastodon.is_empty() && !post.contains(&options.sync_hashtag_mastodon) {
+            // Skip if a sync hashtag is set and the string doesn't match
+            continue;
+        // Hashtag matches or sync hashtag not set, let's post it.
+        } else {
+            updates.tweets.push(NewStatus {
+                text: post,
+                attachments: toot_get_attachments(toot),
+            });
+        }
     }
     updates
 }
