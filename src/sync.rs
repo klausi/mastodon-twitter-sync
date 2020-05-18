@@ -32,6 +32,8 @@ pub struct NewMedia {
 pub struct SyncOptions {
     pub sync_reblogs: bool,
     pub sync_retweets: bool,
+    pub sync_hashtag_twitter: String,
+    pub sync_hashtag_mastodon: String,
 }
 
 pub fn determine_posts(
@@ -414,6 +416,8 @@ mod tests {
     static DEFAULT_SYNC_OPTIONS: SyncOptions = SyncOptions {
         sync_reblogs: true,
         sync_retweets: true,
+        sync_hashtag_twitter: "".to_string(),
+        sync_hashtag_mastodon: "".to_string(),
     };
 
     #[test]

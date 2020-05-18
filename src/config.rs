@@ -24,7 +24,7 @@ pub struct MastodonConfig {
     pub delete_older_favs: bool,
     #[serde(default = "config_true_default")]
     pub sync_reblogs: bool,
-    pub sync_hashtag: str,
+    pub sync_hashtag: String,
     pub app: Data,
 }
 
@@ -42,7 +42,7 @@ pub struct TwitterConfig {
     pub delete_older_favs: bool,
     #[serde(default = "config_true_default")]
     pub sync_retweets: bool,
-    pub sync_hashtag: str,
+    pub sync_hashtag: String,
 }
 
 fn config_false_default() -> bool {
