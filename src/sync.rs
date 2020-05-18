@@ -436,8 +436,8 @@ mod tests {
     static DEFAULT_SYNC_OPTIONS: SyncOptions = SyncOptions {
         sync_reblogs: true,
         sync_retweets: true,
-        sync_hashtag_twitter: "".to_string(),
-        sync_hashtag_mastodon: "".to_string(),
+        sync_hashtag_twitter: "",
+        sync_hashtag_mastodon: "",
     };
 
     #[test]
