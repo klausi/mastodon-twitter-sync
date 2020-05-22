@@ -964,6 +964,62 @@ QT test123: Original text"
         assert!(posts.tweets.is_empty());
     }
 
+    // Test tagged posts are sent when hashtag is set
+    #[test]
+    fn tagged_posts_sent() {
+        let mut status = get_mastodon_status();
+        status.content = "Let's #tweet!".to_string();
+        let mut tweet = get_twitter_status();
+        tweet.text = "Let's #toot!".to_string();
+
+        let mut options = DEFAULT_SYNC_OPTIONS.clone();
+        options.sync_hashtag_twitter = std::option::Option::Some("#toot".to_string());
+        options.sync_hashtag_mastodon = std::option::Option::Some("#tweet".to_string());
+
+        let tweets = vec![tweet];
+        let toots = vec![status];
+
+        let posts = determine_posts(&toots, &tweets, &options);
+        assert!(!posts.toots.is_empty());
+        assert!(!posts.tweets.is_empty());
+    }
+
+    // Test posts without a tag are not sent
+    #[test]
+    fn ignore_untagged_posts() {
+        let mut status = get_mastodon_status();
+        status.content = "Let's NOT tweet!".to_string();
+        let mut tweet = get_twitter_status();
+        tweet.text = "Let's NOT toot!".to_string();
+
+        let mut options = DEFAULT_SYNC_OPTIONS.clone();
+        options.sync_hashtag_twitter = std::option::Option::Some("#toot".to_string());
+        options.sync_hashtag_mastodon = std::option::Option::Some("#tweet".to_string());
+
+        let tweets = vec![tweet];
+        let toots = vec![status];
+
+        let posts = determine_posts(&toots, &tweets, &options);
+        assert!(posts.toots.is_empty());
+        assert!(posts.tweets.is_empty());
+    }
+
+    // Test all posts are sent if hashtag config is unset
+    #[test]
+    fn no_hashtag_set_all_posts_sent() {
+        let mut status = get_mastodon_status();
+        status.content = "Let's #tweet!".to_string();
+        let mut tweet = get_twitter_status();
+        tweet.text = "Let's #toot!".to_string();
+
+        let tweets = vec![tweet];
+        let toots = vec![status];
+
+        let posts = determine_posts(&toots, &tweets, &DEFAULT_SYNC_OPTIONS);
+        assert!(!posts.toots.is_empty());
+        assert!(!posts.tweets.is_empty());
+    }
+
     fn get_mastodon_status() -> Status {
         read_mastodon_status("src/mastodon_status.json")
     }
