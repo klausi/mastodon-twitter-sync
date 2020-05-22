@@ -32,8 +32,8 @@ pub struct NewMedia {
 pub struct SyncOptions {
     pub sync_reblogs: bool,
     pub sync_retweets: bool,
-    pub sync_hashtag_twitter: String,
-    pub sync_hashtag_mastodon: String,
+    pub sync_hashtag_twitter: Option<String>,
+    pub sync_hashtag_mastodon: Option<String>,
 }
 
 pub fn determine_posts(
@@ -63,8 +63,10 @@ pub fn determine_posts(
 
         // Fetch the tweet text into a String object
         let decoded_tweet = tweet_unshorten_decode(tweet);
+        // Fetch the sync hashtag from the Option object for comfort
+        let sync_hashtag_twitter_value = options.sync_hashtag_twitter.as_deref().unwrap_or("");
         // Check if hashtag filtering is enabled and if the tweet matches
-        if !options.sync_hashtag_twitter.is_empty() && !decoded_tweet.contains(&options.sync_hashtag_twitter) {
+        if !sync_hashtag_twitter_value.is_empty() && !decoded_tweet.contains(&sync_hashtag_twitter_value) {
             // Skip if a sync hashtag is set and the string doesn't match
             continue;
         // Hashtag matches or sync hashtag not set, let's post it.
@@ -101,8 +103,10 @@ pub fn determine_posts(
 
         // The toot is not on Twitter yet, next step
 
+        // Fetch the sync hashtag from the Option object for comfort
+        let sync_hashtag_mastodon_value = options.sync_hashtag_mastodon.as_deref().unwrap_or("");
         // Check if hashtag filtering is enabled and if the toot matches
-        if !options.sync_hashtag_mastodon.is_empty() && !post.contains(&options.sync_hashtag_mastodon) {
+        if !sync_hashtag_mastodon_value.is_empty() && !post.contains(&sync_hashtag_mastodon_value) {
             // Skip if a sync hashtag is set and the string doesn't match
             continue;
         // Hashtag matches or sync hashtag not set, let's post it.
@@ -436,8 +440,8 @@ mod tests {
     static DEFAULT_SYNC_OPTIONS: SyncOptions = SyncOptions {
         sync_reblogs: true,
         sync_retweets: true,
-        sync_hashtag_twitter: "",
-        sync_hashtag_mastodon: "",
+        sync_hashtag_twitter: std::option::Option::None,
+        sync_hashtag_mastodon: std::option::Option::None,
     };
 
     #[test]

@@ -48,7 +48,7 @@ async fn run() -> Result<()> {
                     delete_older_statuses: false,
                     delete_older_favs: false,
                     sync_reblogs: true,
-                    sync_hashtag: "".to_string(),
+                    sync_hashtag: std::option::Option::Some("".to_string()),
                 },
                 twitter: twitter_config,
             };
