@@ -74,6 +74,10 @@ This is running a sync without actually posting or deleting anything.
 
 If you already have posts in one or both of your accounts and you want to exclude them from being synced you can use `--skip-existing-posts`. This is going to mark all posts as synced without actually posting them.
 
+    cargo run --release -- --skip-existing-posts
+
+Note that combining `--skip-existing-posts --dry-run` will not do anything. You have to run `--skip-existing-posts` alone to mark all posts as synchronized in the post cache.
+
 ## Periodic execution
 
 Every run of the program only synchronizes the accounts once. Use Cron to run it periodically, recommended every 10 minutes:
