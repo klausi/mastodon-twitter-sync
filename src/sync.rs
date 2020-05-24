@@ -307,10 +307,10 @@ pub fn read_post_cache(cache_file: &str) -> HashSet<String> {
         Ok(json) => {
             match serde_json::from_str::<HashSet<String>>(&json) {
                 Ok(cache) => {
-                    // If the cache has more than 50 items already then empty it to not
+                    // If the cache has more than 150 items already then empty it to not
                     // accumulate too many items and allow posting the same text at a
                     // later date.
-                    if cache.len() > 50 {
+                    if cache.len() > 150 {
                         HashSet::new()
                     } else {
                         cache
