@@ -28,9 +28,10 @@ pub fn mastodon_register() -> Result<Mastodon> {
 
 pub async fn twitter_register() -> Result<TwitterConfig> {
     println!("Go to https://developer.twitter.com/en/apps/create to create a new Twitter app.");
-    println!("Name: Mastodon Twitter Sync");
+    println!("Name: Mastodon Twitter Sync (plus something unique, like your name)");
     println!("Description: Synchronizes Tweets and Toots");
     println!("Website: https://github.com/klausi/mastodon-twitter-sync");
+    println!("App Usage: This app synchronizes Tweets and Toots between Twitter and my Mastodon instance, for the purpose of keeping the two in sync.");
 
     let consumer_key = console_input("Paste your consumer key")?;
     let consumer_secret = console_input("Paste your consumer secret")?;
