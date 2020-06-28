@@ -48,6 +48,7 @@ async fn run() -> Result<()> {
                     delete_older_statuses: false,
                     delete_older_favs: false,
                     sync_reblogs: true,
+                    sync_hashtag: std::option::Option::Some("".to_string()),
                 },
                 twitter: twitter_config,
             };
@@ -118,6 +119,8 @@ async fn run() -> Result<()> {
     let options = SyncOptions {
         sync_reblogs: config.mastodon.sync_reblogs,
         sync_retweets: config.twitter.sync_retweets,
+        sync_hashtag_mastodon: config.mastodon.sync_hashtag,
+        sync_hashtag_twitter: config.twitter.sync_hashtag,
     };
 
     let mut posts = determine_posts(&mastodon_statuses, &tweets, &options);
