@@ -37,15 +37,15 @@ pub async fn twitter_register() -> Result<TwitterConfig> {
     let consumer_secret = console_input("Paste your consumer secret")?;
 
     let con_token = egg_mode::KeyPair::new(consumer_key.clone(), consumer_secret.clone());
-    let request_token = egg_mode::request_token(&con_token, "oob").await?;
+    let request_token = egg_mode::auth::request_token(&con_token, "oob").await?;
     println!(
         "Click this link to authorize on Twitter: {}",
-        egg_mode::authorize_url(&request_token)
+        egg_mode::auth::authorize_url(&request_token)
     );
     let pin = console_input("Paste your PIN")?;
 
     let (token, user_id, screen_name) =
-        egg_mode::access_token(con_token, &request_token, pin).await?;
+        egg_mode::auth::access_token(con_token, &request_token, pin).await?;
 
     match token {
         egg_mode::Token::Access {
