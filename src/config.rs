@@ -24,6 +24,11 @@ pub struct MastodonConfig {
     pub delete_older_favs: bool,
     #[serde(default = "config_true_default")]
     pub sync_reblogs: bool,
+    #[serde(
+        with = "serde_with::rust::string_empty_as_none",
+        default = "config_none_default"
+    )]
+    pub sync_hashtag: Option<String>,
     pub app: Data,
 }
 
@@ -41,6 +46,11 @@ pub struct TwitterConfig {
     pub delete_older_favs: bool,
     #[serde(default = "config_true_default")]
     pub sync_retweets: bool,
+    #[serde(
+        with = "serde_with::rust::string_empty_as_none",
+        default = "config_none_default"
+    )]
+    pub sync_hashtag: Option<String>,
 }
 
 fn config_false_default() -> bool {
@@ -49,6 +59,10 @@ fn config_false_default() -> bool {
 
 fn config_true_default() -> bool {
     true
+}
+
+fn config_none_default<T>() -> Option<T> {
+    None
 }
 
 pub fn load_dates_from_cache(cache_file: &str) -> Result<Option<BTreeMap<DateTime<Utc>, u64>>> {
@@ -61,7 +75,7 @@ pub fn load_dates_from_cache(cache_file: &str) -> Result<Option<BTreeMap<DateTim
 }
 
 pub fn save_dates_to_cache(cache_file: &str, dates: &BTreeMap<DateTime<Utc>, u64>) -> Result<()> {
-    let json = serde_json::to_string(&dates)?;
+    let json = serde_json::to_string_pretty(&dates)?;
     fs::write(cache_file, json.as_bytes())?;
     Ok(())
 }
@@ -103,11 +117,12 @@ mod tests {
     // errors.
     #[test]
     fn serialize_config() {
-        let toml_config = r#"
+        let toml_config = r##"
 [mastodon]
 delete_older_statuses = true
 delete_older_favs = true
 sync_reblogs = false
+sync_hashtag = "#test"
 [mastodon.app]
 base = "https://mastodon.social"
 client_id = "abcd"
@@ -124,7 +139,8 @@ user_name = " "
 delete_older_statuses = true
 delete_older_favs = true
 sync_retweets = false
-"#;
+sync_hashtag = "#test"
+"##;
         let config: Config = toml::from_str(toml_config).unwrap();
         toml::to_string(&config).unwrap();
     }
@@ -160,5 +176,38 @@ delete_older_favs = true
         assert_eq!(config.mastodon.sync_reblogs, true);
         assert_eq!(config.twitter.sync_retweets, true);
         toml::to_string(&config).unwrap();
+    }
+
+    // Verify that an empty string for the hashtag sync ends up as None option.
+    #[test]
+    fn config_empty_sync_hashtag() {
+        let toml_config = r#"
+[mastodon]
+delete_older_statuses = true
+delete_older_favs = true
+sync_reblogs = false
+sync_hashtag = ""
+[mastodon.app]
+base = "https://mastodon.social"
+client_id = "abcd"
+client_secret = "abcd"
+redirect = "urn:ietf:wg:oauth:2.0:oob"
+token = "1234"
+[twitter]
+consumer_key = "abcd"
+consumer_secret = "abcd"
+access_token = "1234"
+access_token_secret = "1234"
+user_id = 0
+user_name = " "
+delete_older_statuses = true
+delete_older_favs = true
+sync_retweets = false
+sync_hashtag = ""
+"#;
+
+        let config: Config = toml::from_str(toml_config).unwrap();
+        assert_eq!(config.mastodon.sync_hashtag, None);
+        assert_eq!(config.twitter.sync_hashtag, None);
     }
 }

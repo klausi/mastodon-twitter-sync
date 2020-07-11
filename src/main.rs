@@ -6,6 +6,8 @@ use std::process;
 use structopt::StructOpt;
 use elefren::prelude::*;
 
+use log::debug;
+
 use crate::args::*;
 use crate::config::*;
 use crate::delete_favs::*;
@@ -27,7 +29,10 @@ mod registration;
 mod sync;
 
 async fn run() -> Result<()> {
+    env_logger::init();
+
     let args = Args::from_args();
+    debug!("running with args {:?}", args);
 
     let config = match fs::read_to_string(&args.config) {
         Ok(config) => config_load(&config)?,
@@ -44,6 +49,7 @@ async fn run() -> Result<()> {
                     delete_older_statuses: false,
                     delete_older_favs: false,
                     sync_reblogs: true,
+                    sync_hashtag: None,
                 },
                 twitter: twitter_config,
             };
@@ -114,34 +120,55 @@ async fn run() -> Result<()> {
     let options = SyncOptions {
         sync_reblogs: config.mastodon.sync_reblogs,
         sync_retweets: config.twitter.sync_retweets,
+        sync_hashtag_mastodon: config.mastodon.sync_hashtag,
+        sync_hashtag_twitter: config.twitter.sync_hashtag,
     };
 
     let mut posts = determine_posts(&mastodon_statuses, &tweets, &options);
 
-    posts = filter_posted_before(posts, args.dry_run)?;
+    // Prevent double posting with a post cache that records each new status
+    // message.
+    let post_cache_file = "post_cache.json";
+    let mut post_cache = read_post_cache(post_cache_file);
+    let mut cache_changed = false;
+    posts = filter_posted_before(posts, &post_cache)?;
 
     for toot in posts.toots {
         if !args.skip_existing_posts {
             println!("Posting to Mastodon: {}", toot.text);
             if !args.dry_run {
-                if let Err(e) = post_to_mastodon(&mastodon, toot).await {
+                if let Err(e) = post_to_mastodon(&mastodon, &toot).await {
                     println!("Error posting toot to Mastodon: {:#?}", e);
                     process::exit(5);
                 }
             }
         }
+        // Posting API call was successful: store text in cache to prevent any
+        // double posting next time.
+        post_cache.insert(toot.text);
+        cache_changed = true;
     }
 
     for tweet in posts.tweets {
         if !args.skip_existing_posts {
             println!("Posting to Twitter: {}", tweet.text);
             if !args.dry_run {
-                if let Err(e) = post_to_twitter(&token, tweet).await {
+                if let Err(e) = post_to_twitter(&token, &tweet).await {
                     println!("Error posting tweet to Twitter: {:#?}", e);
                     process::exit(6);
                 }
             }
         }
+        // Posting API call was successful: store text in cache to prevent any
+        // double posting next time.
+        post_cache.insert(tweet.text);
+        cache_changed = true;
+    }
+
+    // Write out the cache file if necessary.
+    if !args.dry_run && cache_changed {
+        let json = serde_json::to_string_pretty(&post_cache)?;
+        fs::write(post_cache_file, json.as_bytes())?;
     }
 
     // Delete old mastodon statuses if that option is enabled.

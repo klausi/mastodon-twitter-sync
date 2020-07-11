@@ -32,6 +32,8 @@ pub struct NewMedia {
 pub struct SyncOptions {
     pub sync_reblogs: bool,
     pub sync_retweets: bool,
+    pub sync_hashtag_twitter: Option<String>,
+    pub sync_hashtag_mastodon: Option<String>,
 }
 
 pub fn determine_posts(
@@ -56,9 +58,21 @@ pub fn determine_posts(
                 break 'tweets;
             }
         }
-        // The tweet is not on Mastodon yet, let's post it.
+
+        // The tweet is not on Mastodon yet, check if we should post it.
+        // Fetch the tweet text into a String object
+        let decoded_tweet = tweet_unshorten_decode(tweet);
+
+        // Check if hashtag filtering is enabled and if the tweet matches.
+        if let Some(sync_hashtag) = &options.sync_hashtag_twitter {
+            if !sync_hashtag.is_empty() && !decoded_tweet.contains(sync_hashtag) {
+                // Skip if a sync hashtag is set and the string doesn't match.
+                continue;
+            }
+        }
+
         updates.toots.push(NewStatus {
-            text: tweet_unshorten_decode(tweet),
+            text: decoded_tweet,
             attachments: tweet_get_attachments(tweet),
         });
     }
@@ -68,10 +82,11 @@ pub fn determine_posts(
             // Skip reblogs when sync_reblogs is disabled
             continue;
         }
+        let fulltext = mastodon_toot_get_text(toot);
         // If this is a reblog/boost then take the URL to the original toot.
         let post = match &toot.reblog {
-            None => tweet_shorten(&mastodon_toot_get_text(toot), &toot.url),
-            Some(reblog) => tweet_shorten(&mastodon_toot_get_text(toot), &reblog.url),
+            None => tweet_shorten(&fulltext, &toot.url),
+            Some(reblog) => tweet_shorten(&fulltext, &reblog.url),
         };
         // Skip direct toots to other Mastodon users, even if they are public.
         if post.starts_with('@') {
@@ -85,7 +100,16 @@ pub fn determine_posts(
                 break 'toots;
             }
         }
-        // The toot is not on Twitter yet, let's post it.
+
+        // The toot is not on Twitter yet, check if we should post it.
+        // Check if hashtag filtering is enabled and if the tweet matches.
+        if let Some(sync_hashtag) = &options.sync_hashtag_mastodon {
+            if !sync_hashtag.is_empty() && !fulltext.contains(sync_hashtag) {
+                // Skip if a sync hashtag is set and the string doesn't match.
+                continue;
+            }
+        }
+
         updates.tweets.push(NewStatus {
             text: post,
             attachments: toot_get_attachments(toot),
@@ -264,59 +288,53 @@ fn mastodon_toot_get_text(toot: &Status) -> String {
 // Ensure that sync posts have not been made before to prevent syncing loops.
 // Use a cache file to temporarily store posts and compare them on the next
 // invocation.
-pub fn filter_posted_before(posts: StatusUpdates, dry_run: bool) -> Result<StatusUpdates> {
-    // If there are not status updates then we don't need to check anything.
+pub fn filter_posted_before(
+    posts: StatusUpdates,
+    post_cache: &HashSet<String>,
+) -> Result<StatusUpdates> {
+    // If there are no status updates then we don't need to check anything.
     if posts.toots.is_empty() && posts.tweets.is_empty() {
         return Ok(posts);
     }
 
-    let cache_file = "post_cache.json";
-    let mut cache = read_post_cache(cache_file);
     let mut filtered_posts = StatusUpdates {
         tweets: Vec::new(),
         toots: Vec::new(),
     };
     for tweet in posts.tweets {
-        if cache.contains(&tweet.text) {
+        if post_cache.contains(&tweet.text) {
             println!(
                 "Error: preventing double posting to Twitter: {}",
                 tweet.text
             );
         } else {
             filtered_posts.tweets.push(tweet.clone());
-            cache.insert(tweet.text);
         }
     }
     for toot in posts.toots {
-        if cache.contains(&toot.text) {
+        if post_cache.contains(&toot.text) {
             println!(
                 "Error: preventing double posting to Mastodon: {}",
                 toot.text
             );
         } else {
             filtered_posts.toots.push(toot.clone());
-            cache.insert(toot.text);
         }
-    }
-
-    if !dry_run {
-        let json = serde_json::to_string(&cache)?;
-        fs::write(cache_file, json.as_bytes())?;
     }
 
     Ok(filtered_posts)
 }
 
-// Read the JSON encoded cache file from disk or provide en empty default cache.
-fn read_post_cache(cache_file: &str) -> HashSet<String> {
+// Read the JSON encoded cache file from disk or provide an empty default cache.
+pub fn read_post_cache(cache_file: &str) -> HashSet<String> {
     match fs::read_to_string(cache_file) {
         Ok(json) => {
             match serde_json::from_str::<HashSet<String>>(&json) {
                 Ok(cache) => {
-                    // If the cache has more than 50 items already then empty it to not
+                    // If the cache has more than 150 items already then empty it to not
                     // accumulate too many items and allow posting the same text at a
                     // later date.
-                    if cache.len() > 50 {
+                    if cache.len() > 150 {
                         HashSet::new()
                     } else {
                         cache
@@ -420,6 +438,8 @@ mod tests {
     static DEFAULT_SYNC_OPTIONS: SyncOptions = SyncOptions {
         sync_reblogs: true,
         sync_retweets: true,
+        sync_hashtag_twitter: None,
+        sync_hashtag_mastodon: None,
     };
 
     #[test]
@@ -888,10 +908,8 @@ QT test123: Verhalten bei #Hausdurchsuchung"
 
         let tweets = vec![retweet];
         let toots = Vec::new();
-        let options = SyncOptions {
-            sync_reblogs: true,
-            sync_retweets: false,
-        };
+        let mut options = DEFAULT_SYNC_OPTIONS.clone();
+        options.sync_retweets = false;
 
         let posts = determine_posts(&toots, &tweets, &options);
         assert!(posts.toots.is_empty());
@@ -912,10 +930,9 @@ QT test123: Verhalten bei #Hausdurchsuchung"
 
         let tweets = vec![quote_tweet];
         let toots = Vec::new();
-        let options = SyncOptions {
-            sync_reblogs: true,
-            sync_retweets: false,
-        };
+        let mut options = DEFAULT_SYNC_OPTIONS.clone();
+        options.sync_retweets = false;
+
         let posts = determine_posts(&toots, &tweets, &options);
 
         let sync_toot = &posts.toots[0];
@@ -937,10 +954,48 @@ QT test123: Original text"
 
         let tweets = Vec::new();
         let toots = vec![boost];
-        let options = SyncOptions {
-            sync_reblogs: false,
-            sync_retweets: true,
-        };
+        let mut options = DEFAULT_SYNC_OPTIONS.clone();
+        options.sync_reblogs = false;
+
+        let posts = determine_posts(&toots, &tweets, &options);
+        assert!(posts.toots.is_empty());
+        assert!(posts.tweets.is_empty());
+    }
+
+    // Test tagged posts are sent when hashtag is set
+    #[test]
+    fn tagged_posts_sent() {
+        let mut status = get_mastodon_status();
+        status.content = "Let's #tweet!".to_string();
+        let mut tweet = get_twitter_status();
+        tweet.text = "Let's #toot!".to_string();
+
+        let mut options = DEFAULT_SYNC_OPTIONS.clone();
+        options.sync_hashtag_twitter = Some("#toot".to_string());
+        options.sync_hashtag_mastodon = Some("#tweet".to_string());
+
+        let tweets = vec![tweet];
+        let toots = vec![status];
+
+        let posts = determine_posts(&toots, &tweets, &options);
+        assert!(!posts.toots.is_empty());
+        assert!(!posts.tweets.is_empty());
+    }
+
+    // Test posts without a tag are not sent
+    #[test]
+    fn ignore_untagged_posts() {
+        let mut status = get_mastodon_status();
+        status.content = "Let's NOT tweet!".to_string();
+        let mut tweet = get_twitter_status();
+        tweet.text = "Let's NOT toot!".to_string();
+
+        let mut options = DEFAULT_SYNC_OPTIONS.clone();
+        options.sync_hashtag_twitter = Some("#toot".to_string());
+        options.sync_hashtag_mastodon = Some("#tweet".to_string());
+
+        let tweets = vec![tweet];
+        let toots = vec![status];
 
         let posts = determine_posts(&toots, &tweets, &options);
         assert!(posts.toots.is_empty());

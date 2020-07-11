@@ -1,5 +1,7 @@
 # Mastodon Twitter Sync
 
+[![Build Status](https://travis-ci.org/klausi/mastodon-twitter-sync.svg?branch=master)](https://travis-ci.org/klausi/mastodon-twitter-sync)
+
 This tool synchronizes posts from [Mastodon](https://joinmastodon.org/) to [Twitter](https://twitter.com/) and back. It does not matter where you post your stuff - it will get synchronized to the other!
 
 ## Synchronization Features
@@ -39,6 +41,8 @@ delete_older_statuses = true
 delete_older_favs = true
 # Also sync reblogs (boosts).
 sync_reblogs = true
+# Restrict sync to a hashtag (leave empty to sync all posts)
+sync_hashtag = "#sync"
 
 [mastodon.app]
 base = "https://mastodon.social"
@@ -60,6 +64,8 @@ delete_older_statuses = true
 delete_older_favs = true
 # Also sync retweets.
 sync_retweets = true
+# Restrict sync to a hashtag (leave empty to sync all posts)
+sync_hashtag = "#sync"
 ```
 
 ## Preview what's going to be synced
@@ -73,6 +79,10 @@ This is running a sync without actually posting or deleting anything.
 ## Skip existing posts and only sync new posts
 
 If you already have posts in one or both of your accounts and you want to exclude them from being synced you can use `--skip-existing-posts`. This is going to mark all posts as synced without actually posting them.
+
+    cargo run --release -- --skip-existing-posts
+
+Note that combining `--skip-existing-posts --dry-run` will not do anything. You have to run `--skip-existing-posts` alone to mark all posts as synchronized in the post cache.
 
 ## Periodic execution
 
