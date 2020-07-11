@@ -6,6 +6,7 @@ use egg_mode::error::TwitterErrors;
 use elefren::entities::account::Account;
 use elefren::Error as ElefrenError;
 use elefren::Mastodon;
+use elefren::MastodonClient;
 use std::collections::BTreeMap;
 use std::str::FromStr;
 

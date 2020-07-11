@@ -4,11 +4,12 @@ use egg_mode::media::{set_metadata, upload_media};
 use egg_mode::tweet::DraftTweet;
 use egg_mode::tweet::Tweet;
 use egg_mode::Token;
-use failure::format_err;
 use elefren::entities::status::Status;
+use elefren::media_builder::MediaBuilder;
 use elefren::status_builder::StatusBuilder;
 use elefren::Mastodon;
-use elefren::media_builder::MediaBuilder;
+use elefren::MastodonClient;
+use failure::format_err;
 use reqwest::header::CONTENT_TYPE;
 use std::fs::remove_file;
 use tempfile::NamedTempFile;
@@ -16,7 +17,7 @@ use tokio::fs::File;
 use tokio::prelude::*;
 
 pub async fn post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus) -> Result<Status> {
-    let mut status = StatusBuilder::new().status(toot.text);
+    let media_ids = Vec::new();
     // Post attachments first, if there are any.
     for attachment in &toot.attachments {
         // Because we use async for egg-mode we also need to use reqwest in
@@ -45,16 +46,13 @@ pub async fn post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus) -> Result<S
             })?,
         };
 
-        match status.media_ids.as_mut() {
-            Some(ids) => {
-                ids.push(attachment.id);
-            }
-            None => {
-                status.media_ids = Some(vec![attachment.id]);
-            }
-        }
+        media_ids.push(attachment.id);
         remove_file(tmpfile)?;
     }
+    let status = StatusBuilder::new()
+        .status(toot.text)
+        .media_ids(media_ids)
+        .build()?;
 
     match mastodon.new_status(status) {
         Ok(s) => Ok(s),
