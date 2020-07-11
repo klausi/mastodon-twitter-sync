@@ -3,9 +3,9 @@ use chrono::prelude::*;
 use chrono::Duration;
 use egg_mode::error::Error as EggModeError;
 use egg_mode::error::TwitterErrors;
-use mammut::entities::account::Account;
-use mammut::Error as MammutError;
-use mammut::Mastodon;
+use elefren::entities::account::Account;
+use elefren::Error as ElefrenError;
+use elefren::Mastodon;
 use std::collections::BTreeMap;
 use std::str::FromStr;
 
@@ -35,7 +35,7 @@ pub fn mastodon_delete_older_statuses(
         // errors in that case.
         if let Err(error) = mastodon.delete_status(&format!("{}", toot_id)) {
             match error {
-                MammutError::Api(_) => {}
+                ElefrenError::Api(_) => {}
                 _ => return Err(Error::from(error)),
             }
         }

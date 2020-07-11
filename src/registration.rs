@@ -1,5 +1,5 @@
 use crate::errors::*;
-use elefren::apps::AppBuilder;
+use elefren::helpers::cli;
 use elefren::scopes::Scopes;
 use elefren::{Mastodon, Registration};
 use std::io;
@@ -7,24 +7,17 @@ use std::io;
 use super::*;
 
 pub fn mastodon_register() -> Result<Mastodon> {
-    let app = AppBuilder {
-        client_name: "mastodon-twitter-sync",
-        redirect_uris: "urn:ietf:wg:oauth:2.0:oob",
-        scopes: Scopes::ReadWrite,
-        website: Some("https://github.com/klausi/mastodon-twitter-sync"),
-    };
-
     let instance = console_input(
         "Provide the URL of your Mastodon instance, for example https://mastodon.social ",
     )?;
-    let mut registration = Registration::new(instance);
-    registration.register(app)?;
-    let url = registration.authorise()?;
-    println!("Click this link to authorize on Mastodon: {}", url);
+    let registration = Registration::new(instance)
+                                    .client_name("mastodon-twitter-sync")
+                                    .website("https://github.com/klausi/mastodon-twitter-sync")
+                                    .redirect_uris("urn:ietf:wg:oauth:2.0:oob")
+                                    .scopes(Scopes::read_all() | Scopes::write_all())
+                                    .build()?;
 
-    let code = console_input("Paste the returned authorization code")?;
-    let access_token = registration.create_access_token(code)?;
-    Ok(access_token)
+    cli::authenticate(registration)?
 }
 
 pub async fn twitter_register() -> Result<TwitterConfig> {

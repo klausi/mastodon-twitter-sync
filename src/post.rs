@@ -8,6 +8,7 @@ use failure::format_err;
 use elefren::entities::status::Status;
 use elefren::status_builder::StatusBuilder;
 use elefren::Mastodon;
+use elefren::media_builder::MediaBuilder;
 use reqwest::header::CONTENT_TYPE;
 use std::fs::remove_file;
 use tempfile::NamedTempFile;
@@ -15,7 +16,7 @@ use tokio::fs::File;
 use tokio::prelude::*;
 
 pub async fn post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus) -> Result<Status> {
-    let mut status = StatusBuilder::new(toot.text.clone());
+    let mut status = StatusBuilder::new().status(toot.text);
     // Post attachments first, if there are any.
     for attachment in &toot.attachments {
         // Because we use async for egg-mode we also need to use reqwest in

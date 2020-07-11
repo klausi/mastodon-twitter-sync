@@ -3,8 +3,8 @@ use chrono::prelude::*;
 use chrono::Duration;
 use egg_mode::error::Error as EggModeError;
 use egg_mode::error::TwitterErrors;
-use mammut::Error as MammutError;
-use mammut::Mastodon;
+use elefren::Error as ElefrenError;
+use elefren::Mastodon;
 use std::collections::BTreeMap;
 use std::str::FromStr;
 
@@ -30,7 +30,7 @@ pub fn mastodon_delete_older_favs(mastodon: &Mastodon, dry_run: bool) -> Result<
         // errors in that case.
         if let Err(error) = mastodon.unfavourite(&format!("{}", toot_id)) {
             match error {
-                MammutError::Api(_) => {}
+                ElefrenError::Api(_) => {}
                 _ => return Err(Error::from(error)),
             }
         }
