@@ -27,7 +27,6 @@ tokio = { version = ">=0.2", features = ["fs"] }
 [dependencies.elefren]
 git = "https://github.com/klausi/elefren"
 rev = "f608b2124c1b6014b7a6385f518c17e17651a1b6"
-features = ["toml"]
 
 [profile.release]
 # Enabled to have a smaller binary size.
