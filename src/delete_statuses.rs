@@ -37,7 +37,7 @@ pub fn mastodon_delete_older_statuses(
         if let Err(error) = mastodon.delete_status(&format!("{}", toot_id)) {
             match error {
                 ElefrenError::Api(_) => {}
-                _ => return Err(Error::from(error)),
+                _ => return wrap_elefren_error(Err(error)),
             }
         }
     }
@@ -61,13 +61,13 @@ fn mastodon_fetch_toot_dates(
     cache_file: &str,
 ) -> Result<BTreeMap<DateTime<Utc>, u64>> {
     let mut dates = BTreeMap::new();
-    let mut pager = mastodon.statuses(&account.id, None)?;
+    let mut pager = wrap_elefren_error(mastodon.statuses(&account.id, None))?;
     for status in &pager.initial_items {
         let id = u64::from_str(&status.id)?;
         dates.insert(status.created_at, id);
     }
     loop {
-        let statuses = pager.next_page()?;
+        let statuses = wrap_elefren_error(pager.next_page())?;
         if let Some(statuses) = statuses {
             for status in statuses {
                 let id = u64::from_str(&status.id)?;

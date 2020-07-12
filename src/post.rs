@@ -17,7 +17,7 @@ use tokio::fs::File;
 use tokio::prelude::*;
 
 pub async fn post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus) -> Result<Status> {
-    let media_ids = Vec::new();
+    let mut media_ids = Vec::new();
     // Post attachments first, if there are any.
     for attachment in &toot.attachments {
         // Because we use async for egg-mode we also need to use reqwest in
@@ -38,26 +38,25 @@ pub async fn post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus) -> Result<S
         file.write_all(&response.bytes().await?).await?;
 
         let attachment = match &attachment.alt_text {
-            None => mastodon.media(path.into())?,
-            Some(description) => mastodon.media(MediaBuilder {
+            None => wrap_elefren_error(mastodon.media(path.into()))?,
+            Some(description) => wrap_elefren_error(mastodon.media(MediaBuilder {
                 file: path.into(),
                 description: Some(description.clone().into()),
                 focus: None,
-            })?,
+            }))?,
         };
 
         media_ids.push(attachment.id);
         remove_file(tmpfile)?;
     }
-    let status = StatusBuilder::new()
-        .status(toot.text)
-        .media_ids(media_ids)
-        .build()?;
+    let status = wrap_elefren_error(
+        StatusBuilder::new()
+            .status(&toot.text)
+            .media_ids(media_ids)
+            .build(),
+    )?;
 
-    match mastodon.new_status(status) {
-        Ok(s) => Ok(s),
-        Err(e) => Err(e.into()),
-    }
+    wrap_elefren_error(mastodon.new_status(status))
 }
 
 /// Send a new status update to Twitter, including attachments.

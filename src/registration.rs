@@ -10,14 +10,16 @@ pub fn mastodon_register() -> Result<Mastodon> {
     let instance = console_input(
         "Provide the URL of your Mastodon instance, for example https://mastodon.social ",
     )?;
-    let registration = Registration::new(instance)
-        .client_name("mastodon-twitter-sync")
-        .website("https://github.com/klausi/mastodon-twitter-sync")
-        .redirect_uris("urn:ietf:wg:oauth:2.0:oob")
-        .scopes(Scopes::read_all() | Scopes::write_all())
-        .build()?;
+    let registration = wrap_elefren_error(
+        Registration::new(instance)
+            .client_name("mastodon-twitter-sync")
+            .website("https://github.com/klausi/mastodon-twitter-sync")
+            .redirect_uris("urn:ietf:wg:oauth:2.0:oob")
+            .scopes(Scopes::read_all() | Scopes::write_all())
+            .build(),
+    )?;
 
-    Ok(cli::authenticate(registration)?)
+    wrap_elefren_error(cli::authenticate(registration))
 }
 
 pub async fn twitter_register() -> Result<TwitterConfig> {
