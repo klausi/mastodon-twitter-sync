@@ -3,8 +3,9 @@ use chrono::prelude::*;
 use chrono::Duration;
 use egg_mode::error::Error as EggModeError;
 use egg_mode::error::TwitterErrors;
-use mammut::Error as MammutError;
-use mammut::Mastodon;
+use elefren::Error as ElefrenError;
+use elefren::Mastodon;
+use elefren::MastodonClient;
 use std::collections::BTreeMap;
 use std::str::FromStr;
 
@@ -30,8 +31,8 @@ pub fn mastodon_delete_older_favs(mastodon: &Mastodon, dry_run: bool) -> Result<
         // errors in that case.
         if let Err(error) = mastodon.unfavourite(&format!("{}", toot_id)) {
             match error {
-                MammutError::Api(_) => {}
-                _ => return Err(Error::from(error)),
+                ElefrenError::Api(_) => {}
+                _ => return wrap_elefren_error(Err(error)),
             }
         }
     }
@@ -53,13 +54,13 @@ fn mastodon_fetch_fav_dates(
     cache_file: &str,
 ) -> Result<BTreeMap<DateTime<Utc>, u64>> {
     let mut dates = BTreeMap::new();
-    let mut favourites_pager = mastodon.favourites()?;
+    let mut favourites_pager = wrap_elefren_error(mastodon.favourites())?;
     for status in &favourites_pager.initial_items {
         let id = u64::from_str(&status.id)?;
         dates.insert(status.created_at, id);
     }
     loop {
-        let statuses = favourites_pager.next_page()?;
+        let statuses = wrap_elefren_error(favourites_pager.next_page())?;
         if let Some(statuses) = statuses {
             for status in statuses {
                 let id = u64::from_str(&status.id)?;

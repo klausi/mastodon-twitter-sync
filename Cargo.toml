@@ -12,7 +12,6 @@ egg-mode-text = ">=1.14.7"
 env_logger = ">=0.7.1"
 failure = ">=0.1.5"
 log = ">=0.4.8"
-mammut = ">=0.13.0"
 mime = ">=0.3.13"
 regex = ">=0.2.2"
 reqwest = ">=0.10"
@@ -23,6 +22,11 @@ serde_json = ">=1.0.6"
 serde_with = ">=1.4"
 structopt = ">=0.2"
 tokio = { version = ">=0.2", features = ["fs"] }
+
+# Patched elefren for https://github.com/pwoolcoc/elefren/pull/143
+[dependencies.elefren]
+git = "https://github.com/klausi/elefren"
+rev = "f608b2124c1b6014b7a6385f518c17e17651a1b6"
 
 [profile.release]
 # Enabled to have a smaller binary size.
