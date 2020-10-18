@@ -184,7 +184,7 @@ fn tweet_unshorten_decode(tweet: &Tweet) -> String {
         tweet.text = format!(
             "RT {}: {}",
             retweet.clone().user.unwrap().screen_name,
-            retweet.text
+            tweet_get_text_with_quote(&retweet)
         );
         tweet.entities.urls = retweet.entities.urls.clone();
         tweet.extended_entities = retweet.extended_entities.clone();
@@ -1000,6 +1000,51 @@ QT test123: Original text"
         let posts = determine_posts(&toots, &tweets, &options);
         assert!(posts.toots.is_empty());
         assert!(posts.tweets.is_empty());
+    }
+
+    // Test that a retweet of a quote tweet also includes the quoted text.
+    #[test]
+    fn retweet_quote_tweet() {
+        let mut quote_tweet = get_twitter_status();
+        quote_tweet.text = "Quote tweet test https://t.co/MqIukRm3dG".to_string();
+        quote_tweet.entities = TweetEntities {
+            hashtags: Vec::new(),
+            symbols: Vec::new(),
+            urls: vec![UrlEntity {
+                display_url: "twitter.com/test123/statu…".to_string(),
+                expanded_url: Some(
+                    "https://twitter.com/test123/status/1230906460160380928".to_string(),
+                ),
+                range: (21, 44),
+                url: "https://t.co/MqIukRm3dG".to_string(),
+            }],
+            user_mentions: Vec::new(),
+            media: None,
+        };
+        quote_tweet.user = Some(Box::new(get_twitter_user()));
+
+        let mut original_tweet = get_twitter_status();
+        original_tweet.text = "Original text".to_string();
+        original_tweet.user = Some(Box::new(get_twitter_user()));
+        original_tweet.id = 1230906460160380928;
+        quote_tweet.quoted_status = Some(Box::new(original_tweet));
+
+        let mut retweet = get_twitter_status();
+        retweet.user = Some(Box::new(get_twitter_user()));
+        retweet.retweeted = Some(true);
+        retweet.retweeted_status = Some(Box::new(quote_tweet));
+
+        let tweets = vec![retweet];
+        let toots = Vec::new();
+        let posts = determine_posts(&toots, &tweets, &DEFAULT_SYNC_OPTIONS);
+
+        let sync_toot = &posts.toots[0];
+        assert_eq!(
+            sync_toot.text,
+            "RT test123: Quote tweet test
+
+QT test123: Original text"
+        );
     }
 
     fn get_mastodon_status() -> Status {
