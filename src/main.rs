@@ -107,7 +107,7 @@ async fn run() -> Result<()> {
     // We might have only one tweet because of filtering out reply tweets. Fetch
     // some more tweets to make sure we have enough for comparing.
     if tweets.len() < 50 {
-        let (_, mut next_tweets) = match timeline.older(None).await {
+        let (_, next_tweets) = match timeline.older(None).await {
             Ok(tweets) => tweets,
             Err(e) => {
                 println!("Error fetching older tweets from Twitter: {:#?}", e);
