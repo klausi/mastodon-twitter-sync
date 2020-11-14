@@ -23,7 +23,7 @@ serde_with = ">=1.4"
 structopt = ">=0.2"
 # Tokio 0.3 not compatible with requwest and other libs used here. Try to
 # upgrade later.
-tokio = { version = "<0.3", features = ["fs"] }
+tokio = { version = "<0.3", features = ["fs", "time"] }
 
 # Dev version of Elefren because https://github.com/pwoolcoc/elefren/pull/143 is
 # not released yet. Update to 0.22.1 or higher once that is out.
