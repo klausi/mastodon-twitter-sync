@@ -2,6 +2,9 @@ on: [push, pull_request]
 
 name: Testing
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
   test:
     name: Test
@@ -14,7 +17,9 @@ jobs:
         with:
           profile: minimal
           toolchain: stable
-          override: true
+          components: rustfmt, clippy
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v1
       - name: Cargo check
         uses: actions-rs/cargo@v1
         with:
@@ -23,15 +28,11 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-      - name: Install Rustfmt
-        run: rustup component add rustfmt
       - name: Rustfmt
         uses: actions-rs/cargo@v1
         with:
           command: fmt
           args: --all -- --check
-      - name: Install clippy
-        run: rustup component add clippy
       - name: Clippy
         uses: actions-rs/cargo@v1
         with:
