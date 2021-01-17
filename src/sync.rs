@@ -1,4 +1,5 @@
 use crate::errors::*;
+use crate::thread_replies::*;
 use egg_mode::tweet::Tweet;
 use egg_mode_text::character_count;
 use elefren::entities::status::Status;
@@ -20,6 +21,14 @@ pub struct StatusUpdates {
 pub struct NewStatus {
     pub text: String,
     pub attachments: Vec<NewMedia>,
+    // A list of further statuses that are new replies to this new status. Used
+    // to sync threads.
+    pub replies: Vec<NewStatus>,
+    // This new status could be part of a thread, post it in reply to an
+    // existing already synced status.
+    pub in_reply_to_id: Option<u64>,
+    // The original post ID on the source status.
+    pub original_id: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -46,6 +55,11 @@ pub fn determine_posts(
         toots: Vec::new(),
     };
     'tweets: for tweet in twitter_statuses {
+        // Skip replies, they are handled in determine_thread_replies().
+        if let Some(_user_id) = &tweet.in_reply_to_user_id {
+            continue;
+        }
+
         if tweet.retweeted == Some(true) && !options.sync_retweets {
             // Skip retweets when sync_retweets is disabled
             continue;
@@ -74,10 +88,18 @@ pub fn determine_posts(
         updates.toots.push(NewStatus {
             text: decoded_tweet,
             attachments: tweet_get_attachments(tweet),
+            replies: Vec::new(),
+            in_reply_to_id: None,
+            original_id: tweet.id,
         });
     }
 
     'toots: for toot in mastodon_statuses {
+        // Skip replies, thread syncing not supported yet.
+        if let Some(_id) = &toot.in_reply_to_id {
+            continue;
+        }
+
         if toot.reblog.is_some() && !options.sync_reblogs {
             // Skip reblogs when sync_reblogs is disabled
             continue;
@@ -113,13 +135,20 @@ pub fn determine_posts(
         updates.tweets.push(NewStatus {
             text: post,
             attachments: toot_get_attachments(toot),
+            replies: Vec::new(),
+            in_reply_to_id: None,
+            // Assume that Mastodon always uses u64 wrapped in String.
+            original_id: toot.id.parse().unwrap(),
         });
     }
+
+    determine_thread_replies(mastodon_statuses, twitter_statuses, options, &mut updates);
+
     updates
 }
 
 // Returns true if a Mastodon toot and a Twitter tweet are considered equal.
-fn toot_and_tweet_are_equal(toot: &Status, tweet: &Tweet) -> bool {
+pub fn toot_and_tweet_are_equal(toot: &Status, tweet: &Tweet) -> bool {
     // Strip markup from Mastodon toot.
     let toot_text = mastodon_toot_get_text(toot);
     let mut toot_compare = toot_text.to_lowercase();
@@ -176,7 +205,7 @@ fn toot_and_tweet_are_equal(toot: &Status, tweet: &Tweet) -> bool {
 
 // Replace t.co URLs and HTML entity decode &amp;.
 // Directly include quote tweets in the text.
-fn tweet_unshorten_decode(tweet: &Tweet) -> String {
+pub fn tweet_unshorten_decode(tweet: &Tweet) -> String {
     // We need to cleanup the tweet text while passing the tweet around.
     let mut tweet = tweet.clone();
 
@@ -348,7 +377,7 @@ pub fn read_post_cache(cache_file: &str) -> HashSet<String> {
 }
 
 // Returns a list of direct links to attachments for download.
-fn tweet_get_attachments(tweet: &Tweet) -> Vec<NewMedia> {
+pub fn tweet_get_attachments(tweet: &Tweet) -> Vec<NewMedia> {
     let mut links = Vec::new();
     // Check if there are attachments directly on the tweet, otherwise try to
     // use attachments from retweets and quote tweets.
@@ -422,7 +451,7 @@ fn toot_get_attachments(toot: &Status) -> Vec<NewMedia> {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
 
     use super::*;
     use chrono::Utc;
@@ -1061,7 +1090,7 @@ QT test123: Original text"
         status
     }
 
-    fn get_twitter_status() -> Tweet {
+    pub fn get_twitter_status() -> Tweet {
         Tweet {
             coordinates: None,
             created_at: Utc::now(),
@@ -1253,7 +1282,7 @@ QT test123: Original text"
         tweet
     }
 
-    fn get_twitter_user() -> TwitterUser {
+    pub fn get_twitter_user() -> TwitterUser {
         TwitterUser {
             contributors_enabled: false,
             created_at: Utc::now(),
