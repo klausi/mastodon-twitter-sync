@@ -1076,7 +1076,7 @@ QT test123: Original text"
         );
     }
 
-    fn get_mastodon_status() -> Status {
+    pub fn get_mastodon_status() -> Status {
         read_mastodon_status("src/mastodon_status.json")
     }
 

@@ -49,12 +49,14 @@ pub async fn post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus) -> Result<S
         media_ids.push(attachment.id);
         remove_file(tmpfile)?;
     }
-    let status = wrap_elefren_error(
-        StatusBuilder::new()
-            .status(&toot.text)
-            .media_ids(media_ids)
-            .build(),
-    )?;
+
+    let mut status_builder = StatusBuilder::new();
+    status_builder.status(&toot.text);
+    status_builder.media_ids(media_ids);
+    if let Some(parent_id) = toot.in_reply_to_id {
+        status_builder.in_reply_to(parent_id.to_string());
+    }
+    let status = wrap_elefren_error(status_builder.build())?;
 
     wrap_elefren_error(mastodon.new_status(status))
 }
