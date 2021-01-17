@@ -191,4 +191,48 @@ mod tests {
         );
         assert!(sync_toot.replies.is_empty());
     }
+
+    // Tests that multiple new replies for a tweet are synced in the right order
+    // to Mastodon
+    #[test]
+    fn sync_multiple_new_replies() {
+        let mut original_tweet = get_twitter_status();
+        original_tweet.id = 1;
+        original_tweet.user = Some(Box::new(get_twitter_user()));
+        original_tweet.text = "Original".to_string();
+        let mut reply1_tweet = get_twitter_status();
+        reply1_tweet.id = 2;
+        reply1_tweet.user = Some(Box::new(get_twitter_user()));
+        reply1_tweet.text = "Reply1".to_string();
+        reply1_tweet.in_reply_to_user_id = Some(original_tweet.user.clone().unwrap().id);
+        reply1_tweet.in_reply_to_status_id = Some(original_tweet.id.clone());
+        let mut reply2_tweet = get_twitter_status();
+        reply2_tweet.id = 3;
+        reply2_tweet.user = Some(Box::new(get_twitter_user()));
+        reply2_tweet.text = "Reply2".to_string();
+        reply2_tweet.in_reply_to_user_id = Some(original_tweet.user.clone().unwrap().id);
+        reply2_tweet.in_reply_to_status_id = Some(reply1_tweet.id.clone());
+
+        let mut status = get_mastodon_status();
+        status.content = "Original".to_string();
+
+        let tweets = vec![reply2_tweet, reply1_tweet, original_tweet];
+        let toots = vec![status];
+        let posts = determine_posts(&toots, &tweets, &DEFAULT_SYNC_OPTIONS);
+
+        assert_eq!(posts.toots.len(), 1);
+        let reply1_toot = &posts.toots[0];
+        assert_eq!(reply1_toot.text, "Reply1");
+        assert!(reply1_toot.in_reply_to_id.is_some());
+        assert_eq!(
+            reply1_toot.in_reply_to_id.unwrap(),
+            toots[0].id.parse::<u64>().unwrap()
+        );
+        assert_eq!(reply1_toot.replies.len(), 1);
+
+        let reply2_toot = &reply1_toot.replies[0];
+        assert_eq!(reply2_toot.text, "Reply2");
+        assert!(reply2_toot.in_reply_to_id.is_none());
+        assert!(reply2_toot.replies.is_empty());
+    }
 }
