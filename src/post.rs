@@ -16,7 +16,24 @@ use tempfile::NamedTempFile;
 use tokio::fs::File;
 use tokio::prelude::*;
 
+/// Send new status with any given replies to Mastodon.
 pub async fn post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus) -> Result<Status> {
+    let status = send_single_post_to_mastodon(mastodon, toot).await?;
+
+    // Check if we have any additional new replies we have to post.
+    for reply in &toot.replies {
+        let mut new_reply = reply.clone();
+        // Set the new ID of the parent status to reply to.
+        new_reply.in_reply_to_id = Some(status.id.parse().unwrap());
+        send_single_post_to_mastodon(mastodon, &new_reply).await?;
+        //status = post_to_mastodon(mastodon, &new_reply).await?;
+    }
+
+    Ok(status)
+}
+
+/// Sends the given new status to Mastodon.
+pub async fn send_single_post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus) -> Result<Status> {
     let mut media_ids = Vec::new();
     // Post attachments first, if there are any.
     for attachment in &toot.attachments {
