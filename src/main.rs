@@ -136,18 +136,17 @@ async fn run() -> Result<()> {
 
     for toot in posts.toots {
         if !args.skip_existing_posts {
-            println!("Posting to Mastodon: {}", toot.text);
-            if !args.dry_run {
-                if let Err(e) = post_to_mastodon(&mastodon, &toot).await {
-                    println!("Error posting toot to Mastodon: {:#?}", e);
-                    process::exit(5);
-                }
+            if let Err(e) = post_to_mastodon(&mastodon, &toot, args.dry_run).await {
+                println!("Error posting toot to Mastodon: {:#?}", e);
+                process::exit(5);
             }
         }
         // Posting API call was successful: store text in cache to prevent any
         // double posting next time.
-        post_cache.insert(toot.text);
-        cache_changed = true;
+        if !args.dry_run {
+            post_cache.insert(toot.text);
+            cache_changed = true;
+        }
     }
 
     for tweet in posts.tweets {
@@ -162,8 +161,10 @@ async fn run() -> Result<()> {
         }
         // Posting API call was successful: store text in cache to prevent any
         // double posting next time.
-        post_cache.insert(tweet.text);
-        cache_changed = true;
+        if !args.dry_run {
+            post_cache.insert(tweet.text);
+            cache_changed = true;
+        }
     }
 
     // Write out the cache file if necessary.
