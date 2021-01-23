@@ -1,5 +1,6 @@
 use crate::errors::*;
 use crate::sync::NewStatus;
+use egg_mode::media::ProgressInfo::{Failed, InProgress, Pending, Success};
 use egg_mode::media::{set_metadata, upload_media};
 use egg_mode::tweet::DraftTweet;
 use egg_mode::tweet::Tweet;
@@ -12,9 +13,11 @@ use elefren::MastodonClient;
 use failure::format_err;
 use reqwest::header::CONTENT_TYPE;
 use std::fs::remove_file;
+use std::time::Duration;
 use tempfile::NamedTempFile;
 use tokio::fs::File;
 use tokio::prelude::*;
+use tokio::time::delay_for;
 
 /// Send new status with any given replies to Mastodon.
 pub async fn post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus, dry_run: bool) -> Result<()> {
@@ -116,8 +119,36 @@ pub async fn post_to_twitter(token: &Token, tweet: &NewStatus) -> Result<Tweet> 
             .ok_or_else(|| format_err!("Missing content-type on response"))?
             .to_str()?
             .parse::<mime::Mime>()?;
+
         let bytes = response.bytes().await?;
-        let media_handle = upload_media(&bytes, &media_type, &token).await?;
+        let mut media_handle = upload_media(&bytes, &media_type, &token).await?;
+
+        // Now we need to wait and check until the media is ready.
+        loop {
+            let wait_seconds = match media_handle.progress {
+                Some(progress) => match progress {
+                    Pending(seconds) | InProgress(seconds) => seconds,
+                    Failed(error) => {
+                        return Err(format_err!(
+                            "Twitter media upload of {} failed: {}",
+                            attachment.attachment_url,
+                            error
+                        ));
+                    }
+                    Success => 0,
+                },
+                // If there is no progress assume that processing is done.
+                None => 0,
+            };
+
+            if wait_seconds > 0 {
+                delay_for(Duration::from_secs(wait_seconds)).await;
+                media_handle = egg_mode::media::get_status(media_handle.id, &token).await?;
+            } else {
+                break;
+            }
+        }
+
         draft.add_media(media_handle.id.clone());
         if let Some(alt_text) = &attachment.alt_text {
             set_metadata(&media_handle.id, &alt_text, &token).await?;

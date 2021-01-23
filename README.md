@@ -1,6 +1,6 @@
 # Mastodon Twitter Sync
 
-[![Build Status](https://travis-ci.org/klausi/mastodon-twitter-sync.svg?branch=master)](https://travis-ci.org/klausi/mastodon-twitter-sync)
+[![Automated tests](https://github.com/klausi/mastodon-twitter-sync/workflows/Testing/badge.svg)](https://github.com/klausi/mastodon-twitter-sync/actions)
 
 This tool synchronizes posts from [Mastodon](https://joinmastodon.org/) to [Twitter](https://twitter.com/) and back. It does not matter where you post your stuff - it will get synchronized to the other!
 
