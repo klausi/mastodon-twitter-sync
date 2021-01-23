@@ -238,6 +238,11 @@ fn tweet_get_text_with_quote(tweet: &Tweet) -> String {
                             "https://twitter.com/{}/status/{}",
                             screen_name, quoted_tweet.id
                         )
+                        || expanded_url
+                            == &format!(
+                                "https://mobile.twitter.com/{}/status/{}",
+                                screen_name, quoted_tweet.id
+                            )
                     {
                         tweet_text = tweet_text.replace(&url.url, "").trim().to_string();
                     }
@@ -896,6 +901,46 @@ QT test123: Verhalten bei #Hausdurchsuchung"
         assert_eq!(
             sync_toot.attachments[0].attachment_url,
             "https://pbs.twimg.com/media/Du70iGVUcAMgBp6.jpg"
+        );
+    }
+
+    // Test that a quote tweet with a mobile.twitter.com link is synced
+    // correctly.
+    #[test]
+    fn mobile_quote_tweet() {
+        let mut quote_tweet = get_twitter_status();
+        quote_tweet.text = "Quote tweet test https://t.co/MqIukRm3dG".to_string();
+        quote_tweet.entities = TweetEntities {
+            hashtags: Vec::new(),
+            symbols: Vec::new(),
+            urls: vec![UrlEntity {
+                display_url: "mobile.twitter.com/test123/statu…".to_string(),
+                expanded_url: Some(
+                    "https://mobile.twitter.com/test123/status/1230906460160380928".to_string(),
+                ),
+                range: (21, 44),
+                url: "https://t.co/MqIukRm3dG".to_string(),
+            }],
+            user_mentions: Vec::new(),
+            media: None,
+        };
+
+        let mut original_tweet = get_twitter_status();
+        original_tweet.text = "Original text".to_string();
+        original_tweet.user = Some(Box::new(get_twitter_user()));
+        original_tweet.id = 1230906460160380928;
+        quote_tweet.quoted_status = Some(Box::new(original_tweet));
+
+        let tweets = vec![quote_tweet];
+        let toots = Vec::new();
+        let posts = determine_posts(&toots, &tweets, &DEFAULT_SYNC_OPTIONS);
+
+        let sync_toot = &posts.toots[0];
+        assert_eq!(
+            sync_toot.text,
+            "Quote tweet test
+
+QT test123: Original text"
         );
     }
 
