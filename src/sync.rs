@@ -78,6 +78,11 @@ pub fn determine_posts(
     }
 
     'toots: for toot in mastodon_statuses {
+        // Skip replies, thread syncing not supported yet.
+        if let Some(_id) = &toot.in_reply_to_id {
+            continue;
+        }
+
         if toot.reblog.is_some() && !options.sync_reblogs {
             // Skip reblogs when sync_reblogs is disabled
             continue;
@@ -1045,6 +1050,18 @@ QT test123: Original text"
 
 QT test123: Original text"
         );
+    }
+
+    // Test that a Mastodon thread reply is not synced if there is no parent.
+    #[test]
+    fn mastodon_thread_reply() {
+        let mut status = get_mastodon_status();
+        status.in_reply_to_id = Some("1234".to_string());
+        let toots = vec![status];
+
+        let posts = determine_posts(&toots, &Vec::new(), &DEFAULT_SYNC_OPTIONS);
+        assert!(posts.toots.is_empty());
+        assert!(posts.tweets.is_empty());
     }
 
     fn get_mastodon_status() -> Status {
