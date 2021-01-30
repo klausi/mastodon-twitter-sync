@@ -10,11 +10,12 @@ use elefren::media_builder::MediaBuilder;
 use elefren::status_builder::StatusBuilder;
 use elefren::Mastodon;
 use elefren::MastodonClient;
+use failure::bail;
 use failure::format_err;
 use reqwest::header::CONTENT_TYPE;
-use std::fs::remove_file;
+use std::path::Path;
 use std::time::Duration;
-use tempfile::NamedTempFile;
+use tempfile::tempdir;
 use tokio::fs::File;
 use tokio::prelude::*;
 use tokio::time::delay_for;
@@ -65,6 +66,8 @@ pub async fn post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus, dry_run: bo
 /// Sends the given new status to Mastodon.
 pub async fn send_single_post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus) -> Result<Status> {
     let mut media_ids = Vec::new();
+    // Temporary directory where we will download any file attachments to.
+    let temp_dir = tempdir()?;
     // Post attachments first, if there are any.
     for attachment in &toot.attachments {
         // Because we use async for egg-mode we also need to use reqwest in
@@ -75,26 +78,30 @@ pub async fn send_single_post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus)
                 "Failed downloading attachment {}",
                 attachment.attachment_url
             ))?;
-        let tmpfile = NamedTempFile::new()?;
+        let file_name = match Path::new(response.url().path()).file_name() {
+            Some(f) => f,
+            None => bail!(
+                "Failed to create file name from attachment {}",
+                attachment.attachment_url
+            ),
+        };
 
-        // Oh boy, this looks really bad. I could not use the path directly because
-        // the compiler would not let me. Can this be simpler?
-        let path = tmpfile.path().to_str().unwrap().to_string();
+        let path = temp_dir.path().join(file_name);
+        let string_path = path.to_string_lossy().into_owned();
 
-        let mut file = File::create(&path).await?;
+        let mut file = File::create(path).await?;
         file.write_all(&response.bytes().await?).await?;
 
         let attachment = match &attachment.alt_text {
-            None => wrap_elefren_error(mastodon.media(path.into()))?,
+            None => wrap_elefren_error(mastodon.media(string_path.into()))?,
             Some(description) => wrap_elefren_error(mastodon.media(MediaBuilder {
-                file: path.into(),
+                file: string_path.into(),
                 description: Some(description.clone().into()),
                 focus: None,
             }))?,
         };
 
         media_ids.push(attachment.id);
-        remove_file(tmpfile)?;
     }
 
     let mut status_builder = StatusBuilder::new();
