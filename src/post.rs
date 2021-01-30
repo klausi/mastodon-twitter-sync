@@ -5,7 +5,6 @@ use egg_mode::media::{set_metadata, upload_media};
 use egg_mode::tweet::DraftTweet;
 use egg_mode::tweet::Tweet;
 use egg_mode::Token;
-use elefren::entities::status::Status;
 use elefren::media_builder::MediaBuilder;
 use elefren::status_builder::StatusBuilder;
 use elefren::Mastodon;
@@ -30,10 +29,9 @@ pub async fn post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus, dry_run: bo
     } else {
         println!("Posting to Mastodon: {}", toot.text);
     }
-    let mut status_id = "0".to_string();
+    let mut status_id = 0;
     if !dry_run {
-        let status = send_single_post_to_mastodon(mastodon, toot).await?;
-        status_id = status.id;
+        status_id = send_single_post_to_mastodon(mastodon, toot).await?;
     }
 
     // Recursion does not work well with async functions, so we use iteration
@@ -47,13 +45,12 @@ pub async fn post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus, dry_run: bo
         let (parent_id, reply) = replies.remove(0);
         let mut new_reply = reply.clone();
         // Set the new ID of the parent status to reply to.
-        new_reply.in_reply_to_id = Some(parent_id.parse().unwrap());
+        new_reply.in_reply_to_id = Some(parent_id);
 
         println!("Posting thread reply to Mastodon: {}", reply.text);
-        let mut parent_status_id = "0".to_string();
+        let mut parent_status_id = 0;
         if !dry_run {
-            let parent_status = send_single_post_to_mastodon(mastodon, &new_reply).await?;
-            parent_status_id = parent_status.id;
+            parent_status_id = send_single_post_to_mastodon(mastodon, &new_reply).await?;
         }
         for remaining_reply in &reply.replies {
             replies.push((parent_status_id.clone(), remaining_reply));
@@ -64,7 +61,7 @@ pub async fn post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus, dry_run: bo
 }
 
 /// Sends the given new status to Mastodon.
-pub async fn send_single_post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus) -> Result<Status> {
+async fn send_single_post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus) -> Result<u64> {
     let mut media_ids = Vec::new();
     // Temporary directory where we will download any file attachments to.
     let temp_dir = tempdir()?;
@@ -110,9 +107,15 @@ pub async fn send_single_post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus)
     if let Some(parent_id) = toot.in_reply_to_id {
         status_builder.in_reply_to(parent_id.to_string());
     }
-    let status = wrap_elefren_error(status_builder.build())?;
 
-    wrap_elefren_error(mastodon.new_status(status))
+    let draft_status = wrap_elefren_error(status_builder.build())?;
+    let status = wrap_elefren_error(mastodon.new_status(draft_status))?;
+    let id = status
+        .id
+        .parse::<u64>()
+        .context(format!("Mastodon status ID is not u64: {}", status.id))?;
+
+    Ok(id)
 }
 
 /// Send a new status update to Twitter, including attachments.
