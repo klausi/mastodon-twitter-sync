@@ -119,7 +119,7 @@ fn insert_reply_on_status(status: &mut NewStatus, reply: &Reply) -> bool {
         return true;
     }
     for existing_reply in &mut status.replies {
-        if insert_reply_on_status(existing_reply, reply) == true {
+        if insert_reply_on_status(existing_reply, reply) {
             return true;
         }
     }
