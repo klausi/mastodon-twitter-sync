@@ -66,6 +66,10 @@ pub fn determine_posts(
         }
 
         for toot in mastodon_statuses {
+            // Skip replies because we don't want to sync them here.
+            if let Some(_id) = &toot.in_reply_to_id {
+                continue;
+            }
             // If the tweet already exists we can stop here and know that we are
             // synced.
             if toot_and_tweet_are_equal(toot, tweet) {
@@ -149,6 +153,14 @@ pub fn determine_posts(
 
 // Returns true if a Mastodon toot and a Twitter tweet are considered equal.
 pub fn toot_and_tweet_are_equal(toot: &Status, tweet: &Tweet) -> bool {
+    // Make sure the structure is the same: both must be replies or both must
+    // not be replies.
+    if (toot.in_reply_to_id.is_some() && tweet.in_reply_to_status_id.is_none())
+        || (toot.in_reply_to_id.is_none() && tweet.in_reply_to_status_id.is_some())
+    {
+        return false;
+    }
+
     // Strip markup from Mastodon toot.
     let toot_text = mastodon_toot_get_text(toot);
     let mut toot_compare = toot_text.to_lowercase();

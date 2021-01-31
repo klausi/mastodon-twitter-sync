@@ -247,4 +247,55 @@ mod tests {
         assert!(reply3_toot.in_reply_to_id.is_none());
         assert!(reply3_toot.replies.is_empty());
     }
+
+    // Test that a reply to another user is not synced.
+    #[test]
+    fn exclude_replies_to_others() {
+        let mut reply_tweet = get_twitter_status();
+        reply_tweet.user = Some(Box::new(get_twitter_user()));
+        reply_tweet.text = "Reply".to_string();
+        reply_tweet.in_reply_to_user_id = Some(999);
+        reply_tweet.in_reply_to_status_id = Some(999);
+
+        let tweets = vec![reply_tweet];
+        let toots = Vec::new();
+        let posts = determine_posts(&toots, &tweets, &DEFAULT_SYNC_OPTIONS);
+
+        assert!(posts.toots.is_empty());
+    }
+
+    // Tests that replies to oneself are not synced if they are in a
+    // conversation with other users.
+    #[test]
+    fn exclude_conversation_with_others() {
+        let mut original_tweet = get_twitter_status();
+        original_tweet.id = 1;
+        original_tweet.user = Some(Box::new(get_twitter_user()));
+        original_tweet.text = "I will repeat this in a reply".to_string();
+        // First reply is by some other user, we don't need to build it since it
+        // will not be in our timeline.
+        // The following 2 replies are by the original author again.
+        let mut reply2_tweet = get_twitter_status();
+        reply2_tweet.id = 3;
+        reply2_tweet.user = Some(Box::new(get_twitter_user()));
+        reply2_tweet.text = "I will repeat this in a reply".to_string();
+        reply2_tweet.in_reply_to_user_id = Some(2);
+        reply2_tweet.in_reply_to_status_id = Some(2);
+        let mut reply3_tweet = get_twitter_status();
+        reply3_tweet.id = 4;
+        reply3_tweet.user = Some(Box::new(get_twitter_user()));
+        reply3_tweet.text = "Reply3".to_string();
+        reply3_tweet.in_reply_to_user_id = Some(original_tweet.user.clone().unwrap().id);
+        reply3_tweet.in_reply_to_status_id = Some(reply2_tweet.id.clone());
+
+        let mut status = get_mastodon_status();
+        status.content = "I will repeat this in a reply".to_string();
+
+        let tweets = vec![reply3_tweet, reply2_tweet, original_tweet];
+        let toots = vec![status];
+        let posts = determine_posts(&toots, &tweets, &DEFAULT_SYNC_OPTIONS);
+
+        assert!(posts.toots.is_empty());
+        assert!(posts.tweets.is_empty());
+    }
 }
