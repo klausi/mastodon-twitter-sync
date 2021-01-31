@@ -198,7 +198,7 @@ async fn run() -> Result<()> {
     Ok(())
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     if let Err(err) = run().await {
         eprintln!("Error: {}", err);

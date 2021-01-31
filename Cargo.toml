@@ -1,6 +1,6 @@
 [package]
 name = "mastodon-twitter-sync"
-version = "1.5.2"
+version = "1.6.0"
 authors = ["Klaus Purer <klaus.purer@protonmail.ch>"]
 edition = "2018"
 
@@ -14,16 +14,14 @@ failure = ">=0.1.5"
 log = ">=0.4.8"
 mime = ">=0.3.13"
 regex = ">=0.2.2"
-reqwest = ">=0.10"
+reqwest = ">=0.11"
 serde = { version = ">=1.0", features = ["derive"] }
 tempfile = ">=3"
 toml = ">=0.4.5"
 serde_json = ">=1.0.6"
 serde_with = ">=1.4"
 structopt = ">=0.2"
-# Tokio 0.3 not compatible with requwest and other libs used here. Try to
-# upgrade later.
-tokio = { version = "<0.3", features = ["fs", "time"] }
+tokio = { version = ">=1.0", features = ["rt", "macros", "fs", "time"] }
 
 # Dev version of Elefren because https://github.com/pwoolcoc/elefren/pull/143 is
 # not released yet. Update to 0.22.1 or higher once that is out.

@@ -16,8 +16,8 @@ use std::path::Path;
 use std::time::Duration;
 use tempfile::tempdir;
 use tokio::fs::File;
-use tokio::prelude::*;
-use tokio::time::delay_for;
+use tokio::io::AsyncWriteExt;
+use tokio::time::sleep;
 
 /// Send new status with any given replies to Mastodon.
 pub async fn post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus, dry_run: bool) -> Result<()> {
@@ -152,7 +152,7 @@ pub async fn post_to_twitter(token: &Token, tweet: &NewStatus) -> Result<Tweet> 
             };
 
             if wait_seconds > 0 {
-                delay_for(Duration::from_secs(wait_seconds)).await;
+                sleep(Duration::from_secs(wait_seconds)).await;
                 media_handle = egg_mode::media::get_status(media_handle.id, &token).await?;
             } else {
                 break;
