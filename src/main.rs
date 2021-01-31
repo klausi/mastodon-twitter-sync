@@ -27,6 +27,7 @@ mod errors;
 mod post;
 mod registration;
 mod sync;
+mod thread_replies;
 
 async fn run() -> Result<()> {
     env_logger::init();
@@ -72,15 +73,14 @@ async fn run() -> Result<()> {
             process::exit(1);
         }
     };
-    // Get most recent toots but without replies.
-    let mastodon_statuses =
-        match mastodon.statuses(&account.id, StatusesRequest::new().exclude_replies()) {
-            Ok(statuses) => statuses.initial_items,
-            Err(e) => {
-                println!("Error fetching toots from Mastodon: {:#?}", e);
-                process::exit(2);
-            }
-        };
+    // Get most recent 50 toots with replies.
+    let mastodon_statuses = match mastodon.statuses(&account.id, StatusesRequest::new().limit(50)) {
+        Ok(statuses) => statuses.initial_items,
+        Err(e) => {
+            println!("Error fetching toots from Mastodon: {:#?}", e);
+            process::exit(2);
+        }
+    };
 
     let con_token =
         egg_mode::KeyPair::new(config.twitter.consumer_key, config.twitter.consumer_secret);
@@ -93,7 +93,8 @@ async fn run() -> Result<()> {
         access: access_token,
     };
 
-    let timeline = egg_mode::tweet::user_timeline(config.twitter.user_id, false, true, &token)
+    // @todo Exclude retweets directly here if config option set.
+    let timeline = egg_mode::tweet::user_timeline(config.twitter.user_id, true, true, &token)
         .with_page_size(50);
 
     let (timeline, first_tweets) = match timeline.start().await {
@@ -135,18 +136,17 @@ async fn run() -> Result<()> {
 
     for toot in posts.toots {
         if !args.skip_existing_posts {
-            println!("Posting to Mastodon: {}", toot.text);
-            if !args.dry_run {
-                if let Err(e) = post_to_mastodon(&mastodon, &toot).await {
-                    println!("Error posting toot to Mastodon: {:#?}", e);
-                    process::exit(5);
-                }
+            if let Err(e) = post_to_mastodon(&mastodon, &toot, args.dry_run).await {
+                println!("Error posting toot to Mastodon: {:#?}", e);
+                process::exit(5);
             }
         }
         // Posting API call was successful: store text in cache to prevent any
         // double posting next time.
-        post_cache.insert(toot.text);
-        cache_changed = true;
+        if !args.dry_run {
+            post_cache.insert(toot.text);
+            cache_changed = true;
+        }
     }
 
     for tweet in posts.tweets {
@@ -161,8 +161,10 @@ async fn run() -> Result<()> {
         }
         // Posting API call was successful: store text in cache to prevent any
         // double posting next time.
-        post_cache.insert(tweet.text);
-        cache_changed = true;
+        if !args.dry_run {
+            post_cache.insert(tweet.text);
+            cache_changed = true;
+        }
     }
 
     // Write out the cache file if necessary.
