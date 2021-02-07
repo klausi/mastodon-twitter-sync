@@ -99,7 +99,7 @@ pub fn determine_posts(
     }
 
     'toots: for toot in mastodon_statuses {
-        // Skip replies, thread syncing not supported yet.
+        // Skip replies, they are handled in determine_thread_replies().
         if let Some(_id) = &toot.in_reply_to_id {
             continue;
         }
@@ -141,8 +141,10 @@ pub fn determine_posts(
             attachments: toot_get_attachments(toot),
             replies: Vec::new(),
             in_reply_to_id: None,
-            // Assume that Mastodon always uses u64 wrapped in String.
-            original_id: toot.id.parse().unwrap(),
+            original_id: toot
+                .id
+                .parse()
+                .expect(&format!("Mastodon status ID is not u64: {}", toot.id)),
         });
     }
 
@@ -224,7 +226,11 @@ pub fn tweet_unshorten_decode(tweet: &Tweet) -> String {
     if let Some(retweet) = &tweet.retweeted_status {
         tweet.text = format!(
             "RT {}: {}",
-            retweet.clone().user.unwrap().screen_name,
+            retweet
+                .clone()
+                .user
+                .expect(&format!("Twitter user missing on retweet {}", retweet.id))
+                .screen_name,
             tweet_get_text_with_quote(&retweet)
         );
         tweet.entities.urls = retweet.entities.urls.clone();
@@ -263,7 +269,10 @@ fn tweet_get_text_with_quote(tweet: &Tweet) -> String {
             let mut original = quoted_tweet.clone();
             original.quoted_status = None;
             let original_text = tweet_unshorten_decode(&original);
-            let screen_name = original.user.unwrap().screen_name;
+            let screen_name = original
+                .user
+                .expect(&format!("Twitter user missing on tweet {}", original.id))
+                .screen_name;
             let mut tweet_text = tweet.text.clone();
 
             // Remove quote link at the end of the tweet text.
@@ -295,7 +304,7 @@ QT {}: {}",
     }
 }
 
-fn tweet_shorten(text: &str, toot_url: &Option<String>) -> String {
+pub fn tweet_shorten(text: &str, toot_url: &Option<String>) -> String {
     let mut char_count = character_count(text, 23, 23);
     let re = Regex::new(r"[^\s]+$").unwrap();
     let mut shortened = text.trim().to_string();
@@ -319,7 +328,7 @@ fn tweet_shorten(text: &str, toot_url: &Option<String>) -> String {
 }
 
 // Prefix boost toots with the author and strip HTML tags.
-fn mastodon_toot_get_text(toot: &Status) -> String {
+pub fn mastodon_toot_get_text(toot: &Status) -> String {
     let mut replaced = match toot.reblog {
         None => toot.content.clone(),
         Some(ref reblog) => format!("RT {}: {}", reblog.account.username, reblog.content),
@@ -448,7 +457,7 @@ pub fn tweet_get_attachments(tweet: &Tweet) -> Vec<NewMedia> {
 }
 
 // Returns a list of direct links to attachments for download.
-fn toot_get_attachments(toot: &Status) -> Vec<NewMedia> {
+pub fn toot_get_attachments(toot: &Status) -> Vec<NewMedia> {
     let mut links = Vec::new();
     let mut attachments = &toot.media_attachments;
     // If there are no attachments check if this is a boost and if there might

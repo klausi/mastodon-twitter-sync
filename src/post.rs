@@ -3,7 +3,6 @@ use crate::sync::NewStatus;
 use egg_mode::media::ProgressInfo::{Failed, InProgress, Pending, Success};
 use egg_mode::media::{set_metadata, upload_media};
 use egg_mode::tweet::DraftTweet;
-use egg_mode::tweet::Tweet;
 use egg_mode::Token;
 use elefren::media_builder::MediaBuilder;
 use elefren::status_builder::StatusBuilder;
@@ -47,7 +46,10 @@ pub async fn post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus, dry_run: bo
         // Set the new ID of the parent status to reply to.
         new_reply.in_reply_to_id = Some(parent_id);
 
-        println!("Posting thread reply to Mastodon: {}", reply.text);
+        println!(
+            "Posting thread reply for {} to Mastodon: {}",
+            parent_id, reply.text
+        );
         let mut parent_status_id = 0;
         if !dry_run {
             parent_status_id = send_single_post_to_mastodon(mastodon, &new_reply).await?;
@@ -118,8 +120,53 @@ async fn send_single_post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus) -> 
     Ok(id)
 }
 
-/// Send a new status update to Twitter, including attachments.
-pub async fn post_to_twitter(token: &Token, tweet: &NewStatus) -> Result<Tweet> {
+/// Send a new status update to Twitter, including thread replies and
+/// attachments.
+pub async fn post_to_twitter(token: &Token, tweet: &NewStatus, dry_run: bool) -> Result<()> {
+    if let Some(reply_to) = tweet.in_reply_to_id {
+        println!(
+            "Posting thread reply for {} to Twitter: {}",
+            reply_to, tweet.text
+        );
+    } else {
+        println!("Posting to Twitter: {}", tweet.text);
+    }
+    let mut status_id = 0;
+    if !dry_run {
+        status_id = send_single_post_to_twitter(token, tweet).await?;
+    }
+
+    // Recursion does not work well with async functions, so we use iteration
+    // here instead.
+    let mut replies = Vec::new();
+    for reply in &tweet.replies {
+        replies.push((status_id.clone(), reply));
+    }
+
+    while !replies.is_empty() {
+        let (parent_id, reply) = replies.remove(0);
+        let mut new_reply = reply.clone();
+        // Set the new ID of the parent status to reply to.
+        new_reply.in_reply_to_id = Some(parent_id);
+
+        println!(
+            "Posting thread reply for {} to Twitter: {}",
+            parent_id, reply.text
+        );
+        let mut parent_status_id = 0;
+        if !dry_run {
+            parent_status_id = send_single_post_to_twitter(token, &new_reply).await?;
+        }
+        for remaining_reply in &reply.replies {
+            replies.push((parent_status_id.clone(), remaining_reply));
+        }
+    }
+
+    Ok(())
+}
+
+/// Sends the given new status to Twitter.
+async fn send_single_post_to_twitter(token: &Token, tweet: &NewStatus) -> Result<u64> {
     let mut draft = DraftTweet::new(tweet.text.clone());
     for attachment in &tweet.attachments {
         let response = reqwest::get(&attachment.attachment_url).await?;
@@ -164,6 +211,12 @@ pub async fn post_to_twitter(token: &Token, tweet: &NewStatus) -> Result<Tweet> 
             set_metadata(&media_handle.id, &alt_text, &token).await?;
         }
     }
-    let created_tweet = draft.send(&token).await?;
-    Ok((*created_tweet).clone())
+
+    let created_tweet = if let Some(parent_id) = tweet.in_reply_to_id {
+        draft.in_reply_to(parent_id).send(&token).await?
+    } else {
+        draft.send(&token).await?
+    };
+
+    Ok(created_tweet.id)
 }
