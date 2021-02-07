@@ -28,6 +28,8 @@ tokio = { version = ">=1.0", features = ["rt", "macros", "fs", "time"] }
 git = "https://github.com/pwoolcoc/elefren"
 rev = "44da726d08ff20a67ae8f3845b0008269e1a2076"
 
+# Dev version of egg-mode because Tokio 1.0 support has not landed yet. See
+# https://github.com/egg-mode-rs/egg-mode/pull/111
 [dependencies.egg-mode]
 git = "https://github.com/klausi/egg-mode"
 rev = "11dc221533288ebcb1b135c2df65f187a80cd255"
