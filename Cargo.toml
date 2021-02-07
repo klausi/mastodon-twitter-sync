@@ -7,7 +7,6 @@ edition = "2018"
 [dependencies]
 chrono = ">=0.4.0"
 dissolve = ">=0.2.2"
-egg-mode = ">=0.15"
 egg-mode-text = ">=1.14.7"
 env_logger = ">=0.7.1"
 failure = ">=0.1.5"
@@ -28,6 +27,10 @@ tokio = { version = ">=1.0", features = ["rt", "macros", "fs", "time"] }
 [dependencies.elefren]
 git = "https://github.com/pwoolcoc/elefren"
 rev = "44da726d08ff20a67ae8f3845b0008269e1a2076"
+
+[dependencies.egg-mode]
+git = "https://github.com/klausi/egg-mode"
+rev = "11dc221533288ebcb1b135c2df65f187a80cd255"
 
 [profile.release]
 # Enabled to have a smaller binary size.
