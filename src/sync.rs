@@ -141,8 +141,10 @@ pub fn determine_posts(
             attachments: toot_get_attachments(toot),
             replies: Vec::new(),
             in_reply_to_id: None,
-            // Assume that Mastodon always uses u64 wrapped in String.
-            original_id: toot.id.parse().unwrap(),
+            original_id: toot
+                .id
+                .parse()
+                .expect(&format!("Mastodon status ID is not u64: {}", toot.id)),
         });
     }
 
@@ -224,7 +226,11 @@ pub fn tweet_unshorten_decode(tweet: &Tweet) -> String {
     if let Some(retweet) = &tweet.retweeted_status {
         tweet.text = format!(
             "RT {}: {}",
-            retweet.clone().user.unwrap().screen_name,
+            retweet
+                .clone()
+                .user
+                .expect(&format!("Twitter user missing on retweet {}", retweet.id))
+                .screen_name,
             tweet_get_text_with_quote(&retweet)
         );
         tweet.entities.urls = retweet.entities.urls.clone();
@@ -263,7 +269,10 @@ fn tweet_get_text_with_quote(tweet: &Tweet) -> String {
             let mut original = quoted_tweet.clone();
             original.quoted_status = None;
             let original_text = tweet_unshorten_decode(&original);
-            let screen_name = original.user.unwrap().screen_name;
+            let screen_name = original
+                .user
+                .expect(&format!("Twitter user missing on tweet {}", original.id))
+                .screen_name;
             let mut tweet_text = tweet.text.clone();
 
             // Remove quote link at the end of the tweet text.

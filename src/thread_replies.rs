@@ -23,7 +23,13 @@ pub fn determine_thread_replies(
     'tweets: for tweet in twitter_statuses {
         // Check if this is a reply to a tweet of this user.
         if let Some(user_id) = &tweet.in_reply_to_user_id {
-            if user_id != &tweet.user.as_ref().unwrap().id {
+            if user_id
+                != &tweet
+                    .user
+                    .as_ref()
+                    .expect(&format!("Twitter user missing on tweet {}", tweet.id))
+                    .id
+            {
                 continue;
             }
 
@@ -54,7 +60,9 @@ pub fn determine_thread_replies(
                     id: tweet.id,
                     text: decoded_tweet,
                     attachments: tweet_get_attachments(tweet),
-                    in_reply_to_id: tweet.in_reply_to_status_id.unwrap(),
+                    in_reply_to_id: tweet
+                        .in_reply_to_status_id
+                        .expect(&format!("Twitter reply ID missing on tweet {}", tweet.id)),
                 },
             );
         }
@@ -150,7 +158,11 @@ fn insert_twitter_replies(
                             text: reply.text.clone(),
                             attachments: reply.attachments.clone(),
                             replies: Vec::new(),
-                            in_reply_to_id: Some(toot.id.parse().unwrap()),
+                            in_reply_to_id: Some(
+                                toot.id
+                                    .parse()
+                                    .expect(&format!("Mastodon status ID is not u64: {}", toot.id)),
+                            ),
                             original_id: reply.id,
                         });
                         continue 'reply_loop;
