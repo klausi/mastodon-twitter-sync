@@ -151,12 +151,9 @@ async fn run() -> Result<()> {
 
     for tweet in posts.tweets {
         if !args.skip_existing_posts {
-            println!("Posting to Twitter: {}", tweet.text);
-            if !args.dry_run {
-                if let Err(e) = post_to_twitter(&token, &tweet).await {
-                    println!("Error posting tweet to Twitter: {:#?}", e);
-                    process::exit(6);
-                }
+            if let Err(e) = post_to_twitter(&token, &tweet, args.dry_run).await {
+                println!("Error posting tweet to Twitter: {:#?}", e);
+                process::exit(6);
             }
         }
         // Posting API call was successful: store text in cache to prevent any
