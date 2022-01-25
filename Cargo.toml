@@ -25,10 +25,11 @@ structopt = ">=0.2"
 # Tokio 0.3 not compatible with reqwest and Elefren. Try to upgrade later.
 tokio = { version = "<0.3", features = ["fs", "time"] }
 
-# Dev version of Elefren because https://github.com/pwoolcoc/elefren/pull/143 is
-# not released yet. Update to 0.22.1 or higher once that is out.
+# Dev version of Elefren because media alt text support is not released yet.
+# The original Github repository of the project was also deleted, so we have to
+# use this mirror.
 [dependencies.elefren]
-git = "https://github.com/pwoolcoc/elefren"
+git = "https://github.com/DeeUnderscore/elefren"
 rev = "44da726d08ff20a67ae8f3845b0008269e1a2076"
 
 [profile.release]
