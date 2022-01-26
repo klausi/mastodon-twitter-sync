@@ -27,6 +27,16 @@ cd mastodon-twitter-sync
 cargo run --release
 ```
 
+### Installation and execution inside Docker
+
+If you prefer to install this inside a Docker container, you have to first build a Docker image which can then be used in as many containers you like or need, e.g. if you run it with different accounts.
+
+To build the Docker image, download the file `Dockerfile` from this repository and run `docker build -t local/mastodon-twitter-sync .` which builds the image and stores it in your local Docker repository.
+
+To verfiy, that the image works as expected, you can run `docker run --rm local/mastodon-twitter-sync --version` which will print `mastodon-twitter-sync 1.6.0` to your console.
+
+To then use this prepared image like described in the following chapters, just run `docker run --rm -v "$(pwd)":/data local/mastodon-twitter-sync` in the directory with your `mastodon-twitter-sync.toml` file in it instead of `cargo run --release` as described in these chapters.
+
 ## Configuration
 
 All configuration options are created in a `mastodon-twitter-sync.toml` file in the directory where you executed the program.
