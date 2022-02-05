@@ -27,15 +27,38 @@ cd mastodon-twitter-sync
 cargo run --release
 ```
 
-### Installation and execution inside Docker
+### Installation and execution with Docker
 
-If you prefer to install this inside a Docker container, you have to first build a Docker image which can then be used in as many containers you like or need, e.g. if you run it with different accounts.
+If you prefer to use Mastodon-Twitter-Sync with Docker, you have to first build a Docker image which can then be used in as many containers you like or need, e.g. if you run it with different accounts.
 
-To build the Docker image, download the file `Dockerfile` from this repository and run `docker build -t local/mastodon-twitter-sync .` which builds the image and stores it in your local Docker repository.
+#### Build the Docker image
 
-To verfiy, that the image works as expected, you can run `docker run --rm local/mastodon-twitter-sync --version` which will print `mastodon-twitter-sync 1.6.0` to your console.
+```shell
+# Clone this repository
+git clone https://github.com/klausi/mastodon-twitter-sync.git /tmp/mastodon-twitter-sync
+cd /tmp/mastodon-twitter-sync
+# Build the image locally
+docker build -t local/mastodon-twitter-sync .
+```
 
-To then use this prepared image like described in the following chapters, just run `docker run --rm -v "$(pwd)":/data local/mastodon-twitter-sync` in the directory with your `mastodon-twitter-sync.toml` file in it instead of `cargo run --release` as described in these chapters.
+#### Test the Docker image
+
+```shell
+docker run --rm local/mastodon-twitter-sync --version
+
+# Should print this:
+mastodon-twitter-sync 1.6.0
+```
+
+#### Run Mastodon-Twitter-Sync with Docker
+
+Create and edit your `mastodon-twitter-sync.toml` in an empty directory as described below and run Mastodon-Twitter-Sync from with that directory with this command:
+
+```shell
+docker run --rm -v "$(pwd)":/data local/mastodon-twitter-sync
+```
+
+Use that command as a replacement for `cargo run --release`. For everything else, all instructions in this readme just remain the same.
 
 ## Configuration
 
