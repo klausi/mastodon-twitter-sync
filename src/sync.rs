@@ -163,58 +163,45 @@ pub fn toot_and_tweet_are_equal(toot: &Status, tweet: &Tweet) -> bool {
         return false;
     }
 
-    // Strip markup from Mastodon toot.
-    let toot_text = mastodon_toot_get_text(toot);
-    let mut toot_compare = toot_text.to_lowercase();
-    // Remove http:// and https:// for comparing because Twitter sometimes adds
-    // those randomly.
-    toot_compare = toot_compare.replace("http://", "");
-    toot_compare = toot_compare.replace("https://", "");
+    // Strip markup from Mastodon toot and unify message for comparison.
+    let toot_text = unify_post_content(mastodon_toot_get_text(toot));
     // Replace those ugly t.co URLs in the tweet text.
-    let tweet_text = tweet_unshorten_decode(tweet);
-    let mut tweet_compare = tweet_text.to_lowercase();
-    tweet_compare = tweet_compare.replace("http://", "");
-    tweet_compare = tweet_compare.replace("https://", "");
+    let tweet_text = unify_post_content(tweet_unshorten_decode(tweet));
 
-    if toot_compare == tweet_compare {
+    if toot_text == tweet_text {
         return true;
     }
     // Mastodon allows up to 500 characters, so we might need to shorten the
     // toot. If this is a reblog/boost then take the URL to the original toot.
-    let shortened_toot = match &toot.reblog {
+    let shortened_toot = unify_post_content(match &toot.reblog {
         None => tweet_shorten(&toot_text, &toot.url),
         Some(reblog) => tweet_shorten(&toot_text, &reblog.url),
-    };
-    let mut shortened_toot_compare = shortened_toot.to_lowercase();
-    shortened_toot_compare = shortened_toot_compare.replace("http://", "");
-    shortened_toot_compare = shortened_toot_compare.replace("https://", "");
+    });
 
-    if shortened_toot_compare == tweet_compare {
+    if shortened_toot == tweet_text {
         return true;
     }
 
+    false
+}
+
+// Unifies tweet text or toot text to a common format.
+fn unify_post_content(content: String) -> String {
+    let mut result = content.to_lowercase();
+    // Remove http:// and https:// for comparing because Twitter sometimes adds
+    // those randomly.
+    result = result.replace("http://", "");
+    result = result.replace("https://", "");
     // Support for old posts that started with "RT @username:", we consider them
     // equal to "RT username:".
-    if tweet_compare.starts_with("rt @") {
-        let old_rt = tweet_compare.replacen("rt @", "rt ", 1);
-        if old_rt == toot_compare || old_rt == shortened_toot_compare {
-            return true;
-        }
+    if result.starts_with("rt @") {
+        result = result.replacen("rt @", "rt ", 1);
     }
-    if toot_compare.starts_with("rt @") {
-        let old_rt = toot_compare.replacen("rt @", "rt ", 1);
-        if old_rt == tweet_compare {
-            return true;
-        }
+    if result.starts_with("rt \\@") {
+        result = result.replacen("rt \\@", "rt ", 1);
     }
-    if shortened_toot_compare.starts_with("rt @") {
-        let old_rt = shortened_toot_compare.replacen("rt @", "rt ", 1);
-        if old_rt == tweet_compare {
-            return true;
-        }
-    }
-
-    false
+    // Escape direct user mentions with \@.
+    result.replace(" @", " \\@")
 }
 
 // Replace t.co URLs and HTML entity decode &amp;.
@@ -253,6 +240,9 @@ pub fn tweet_unshorten_decode(tweet: &Tweet) -> String {
             tweet.text = tweet.text.replace(&url.url, &expanded_url);
         }
     }
+
+    // Escape direct user mentions with \@.
+    tweet.text = tweet.text.replace(" @", " \\@");
 
     // Twitterposts have HTML entities such as &amp;, we need to decode them.
     dissolve::strip_html_tags(&tweet.text).join("")
@@ -337,6 +327,10 @@ pub fn mastodon_toot_get_text(toot: &Status) -> String {
     replaced = replaced.replace("<br>", "\n");
     replaced = replaced.replace("</p><p>", "\n\n");
     replaced = replaced.replace("<p>", "");
+
+    // Escape direct user mentions with \@.
+    replaced = replaced.replace(" @", " \\@");
+
     dissolve::strip_html_tags(&replaced).join("")
 }
 
@@ -671,6 +665,29 @@ UNLISTED 🔓 ✅ Tagged people
         status.content = long_toot.to_string();
         tweet.text = tweet_shorten(long_toot, &status.url).to_lowercase();
         assert!(toot_and_tweet_are_equal(&status, &tweet));
+    }
+
+    // Test that @username mentions are escaped, because we don't want to mention completely unrelated users on the other network.
+    #[test]
+    fn mention_escaped() {
+        let mut status = get_mastodon_status();
+        status.content = "I will mention @klausi here".to_string();
+        let mut tweet = get_twitter_status();
+        tweet.text = "I will mention \\@klausi here".to_string();
+        assert!(toot_and_tweet_are_equal(&status, &tweet));
+
+        let tweets = Vec::new();
+        let statuses = vec![status];
+        let posts = determine_posts(&statuses, &tweets, &DEFAULT_SYNC_OPTIONS);
+        assert!(posts.toots.is_empty());
+        assert_eq!(posts.tweets[0].text, "I will mention \\@klausi here");
+
+        tweet.text = "I will mention @klausi here".to_string();
+        let tweets = vec![tweet];
+        let statuses = Vec::new();
+        let posts = determine_posts(&statuses, &tweets, &DEFAULT_SYNC_OPTIONS);
+        assert!(posts.tweets.is_empty());
+        assert_eq!(posts.toots[0].text, "I will mention \\@klausi here");
     }
 
     // Test that direct toots starting with "@" are not copied to twitter.
