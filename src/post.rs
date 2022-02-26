@@ -37,7 +37,7 @@ pub async fn post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus, dry_run: bo
     // here instead.
     let mut replies = Vec::new();
     for reply in &toot.replies {
-        replies.push((status_id.clone(), reply));
+        replies.push((status_id, reply));
     }
 
     while !replies.is_empty() {
@@ -55,7 +55,7 @@ pub async fn post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus, dry_run: bo
             parent_status_id = send_single_post_to_mastodon(mastodon, &new_reply).await?;
         }
         for remaining_reply in &reply.replies {
-            replies.push((parent_status_id.clone(), remaining_reply));
+            replies.push((parent_status_id, remaining_reply));
         }
     }
 
@@ -140,7 +140,7 @@ pub async fn post_to_twitter(token: &Token, tweet: &NewStatus, dry_run: bool) ->
     // here instead.
     let mut replies = Vec::new();
     for reply in &tweet.replies {
-        replies.push((status_id.clone(), reply));
+        replies.push((status_id, reply));
     }
 
     while !replies.is_empty() {
@@ -158,7 +158,7 @@ pub async fn post_to_twitter(token: &Token, tweet: &NewStatus, dry_run: bool) ->
             parent_status_id = send_single_post_to_twitter(token, &new_reply).await?;
         }
         for remaining_reply in &reply.replies {
-            replies.push((parent_status_id.clone(), remaining_reply));
+            replies.push((parent_status_id, remaining_reply));
         }
     }
 
@@ -178,7 +178,7 @@ async fn send_single_post_to_twitter(token: &Token, tweet: &NewStatus) -> Result
             .parse::<mime::Mime>()?;
 
         let bytes = response.bytes().await?;
-        let mut media_handle = upload_media(&bytes, &media_type, &token).await?;
+        let mut media_handle = upload_media(&bytes, &media_type, token).await?;
 
         // Now we need to wait and check until the media is ready.
         loop {
@@ -200,7 +200,7 @@ async fn send_single_post_to_twitter(token: &Token, tweet: &NewStatus) -> Result
 
             if wait_seconds > 0 {
                 delay_for(Duration::from_secs(wait_seconds)).await;
-                media_handle = egg_mode::media::get_status(media_handle.id, &token).await?;
+                media_handle = egg_mode::media::get_status(media_handle.id, token).await?;
             } else {
                 break;
             }
@@ -208,14 +208,14 @@ async fn send_single_post_to_twitter(token: &Token, tweet: &NewStatus) -> Result
 
         draft.add_media(media_handle.id.clone());
         if let Some(alt_text) = &attachment.alt_text {
-            set_metadata(&media_handle.id, &alt_text, &token).await?;
+            set_metadata(&media_handle.id, alt_text, token).await?;
         }
     }
 
     let created_tweet = if let Some(parent_id) = tweet.in_reply_to_id {
-        draft.in_reply_to(parent_id).send(&token).await?
+        draft.in_reply_to(parent_id).send(token).await?
     } else {
-        draft.send(&token).await?
+        draft.send(token).await?
     };
 
     Ok(created_tweet.id)

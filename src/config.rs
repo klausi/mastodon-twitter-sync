@@ -173,8 +173,8 @@ delete_older_favs = true
         // ^^notice sync_reblogs and sync_retweets is not set
 
         let config: Config = toml::from_str(toml_config).unwrap();
-        assert_eq!(config.mastodon.sync_reblogs, true);
-        assert_eq!(config.twitter.sync_retweets, true);
+        assert!(config.mastodon.sync_reblogs);
+        assert!(config.twitter.sync_retweets);
         toml::to_string(&config).unwrap();
     }
 

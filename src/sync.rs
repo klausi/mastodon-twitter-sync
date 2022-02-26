@@ -144,7 +144,7 @@ pub fn determine_posts(
             original_id: toot
                 .id
                 .parse()
-                .expect(&format!("Mastodon status ID is not u64: {}", toot.id)),
+                .unwrap_or_else(|_| panic!("Mastodon status ID is not u64: {}", toot.id)),
         });
     }
 
@@ -216,9 +216,9 @@ pub fn tweet_unshorten_decode(tweet: &Tweet) -> String {
             retweet
                 .clone()
                 .user
-                .expect(&format!("Twitter user missing on retweet {}", retweet.id))
+                .unwrap_or_else(|| panic!("Twitter user missing on retweet {}", retweet.id))
                 .screen_name,
-            tweet_get_text_with_quote(&retweet)
+            tweet_get_text_with_quote(retweet)
         );
         tweet.entities.urls = retweet.entities.urls.clone();
         tweet.extended_entities = retweet.extended_entities.clone();
@@ -237,7 +237,7 @@ pub fn tweet_unshorten_decode(tweet: &Tweet) -> String {
     // Replace t.co URLs with the real links in tweets.
     for url in tweet.entities.urls {
         if let Some(expanded_url) = &url.expanded_url {
-            tweet.text = tweet.text.replace(&url.url, &expanded_url);
+            tweet.text = tweet.text.replace(&url.url, expanded_url);
         }
     }
 
@@ -259,9 +259,10 @@ fn tweet_get_text_with_quote(tweet: &Tweet) -> String {
             let mut original = quoted_tweet.clone();
             original.quoted_status = None;
             let original_text = tweet_unshorten_decode(&original);
-            let screen_name = original
+            let screen_name = &original
                 .user
-                .expect(&format!("Twitter user missing on tweet {}", original.id))
+                .as_ref()
+                .unwrap_or_else(|| panic!("Twitter user missing on tweet {}", original.id))
                 .screen_name;
             let mut tweet_text = tweet.text.clone();
 

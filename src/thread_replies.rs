@@ -27,7 +27,7 @@ pub fn determine_thread_replies(
                 != &tweet
                     .user
                     .as_ref()
-                    .expect(&format!("Twitter user missing on tweet {}", tweet.id))
+                    .unwrap_or_else(|| panic!("Twitter user missing on tweet {}", tweet.id))
                     .id
             {
                 continue;
@@ -62,7 +62,7 @@ pub fn determine_thread_replies(
                     attachments: tweet_get_attachments(tweet),
                     in_reply_to_id: tweet
                         .in_reply_to_status_id
-                        .expect(&format!("Twitter reply ID missing on tweet {}", tweet.id)),
+                        .unwrap_or_else(|| panic!("Twitter reply ID missing on tweet {}", tweet.id)),
                 },
             );
         }
@@ -105,7 +105,7 @@ pub fn determine_thread_replies(
             let in_reply_to_id = toot
                 .in_reply_to_id
                 .as_ref()
-                .expect(&format!("Mastodon reply ID missing on status: {}", toot.id));
+                .unwrap_or_else(|| panic!("Mastodon reply ID missing on status: {}", toot.id));
             // Insert this reply in the beginning to reverse order.
             mastodon_replies.insert(
                 0,
@@ -113,12 +113,12 @@ pub fn determine_thread_replies(
                     id: toot
                         .id
                         .parse::<u64>()
-                        .expect(&format!("Mastodon status ID is not u64: {}", toot.id)),
+                        .unwrap_or_else(|_| panic!("Mastodon status ID is not u64: {}", toot.id)),
                     text: post,
                     attachments: toot_get_attachments(toot),
                     in_reply_to_id: in_reply_to_id
                         .parse::<u64>()
-                        .expect(&format!("Mastodon reply ID is not u64: {}", in_reply_to_id)),
+                        .unwrap_or_else(|_| panic!("Mastodon reply ID is not u64: {}", in_reply_to_id)),
                 },
             );
         }
@@ -161,7 +161,7 @@ fn insert_twitter_replies(
                             in_reply_to_id: Some(
                                 toot.id
                                     .parse()
-                                    .expect(&format!("Mastodon status ID is not u64: {}", toot.id)),
+                                    .unwrap_or_else(|_| panic!("Mastodon status ID is not u64: {}", toot.id)),
                             ),
                             original_id: reply.id,
                         });
@@ -256,7 +256,7 @@ mod tests {
         reply_tweet.user = Some(Box::new(get_twitter_user()));
         reply_tweet.text = "Reply".to_string();
         reply_tweet.in_reply_to_user_id = Some(original_tweet.user.clone().unwrap().id);
-        reply_tweet.in_reply_to_status_id = Some(original_tweet.id.clone());
+        reply_tweet.in_reply_to_status_id = Some(original_tweet.id);
 
         let tweets = vec![reply_tweet, original_tweet];
         let toots = Vec::new();
@@ -300,7 +300,7 @@ mod tests {
         reply_tweet.user = Some(Box::new(get_twitter_user()));
         reply_tweet.text = "Reply".to_string();
         reply_tweet.in_reply_to_user_id = Some(original_tweet.user.clone().unwrap().id);
-        reply_tweet.in_reply_to_status_id = Some(original_tweet.id.clone());
+        reply_tweet.in_reply_to_status_id = Some(original_tweet.id);
 
         let mut status = get_mastodon_status();
         status.content = "Original".to_string();
@@ -359,19 +359,19 @@ mod tests {
         reply1_tweet.user = Some(Box::new(get_twitter_user()));
         reply1_tweet.text = "Reply1".to_string();
         reply1_tweet.in_reply_to_user_id = Some(original_tweet.user.clone().unwrap().id);
-        reply1_tweet.in_reply_to_status_id = Some(original_tweet.id.clone());
+        reply1_tweet.in_reply_to_status_id = Some(original_tweet.id);
         let mut reply2_tweet = get_twitter_status();
         reply2_tweet.id = 3;
         reply2_tweet.user = Some(Box::new(get_twitter_user()));
         reply2_tweet.text = "Reply2".to_string();
         reply2_tweet.in_reply_to_user_id = Some(original_tweet.user.clone().unwrap().id);
-        reply2_tweet.in_reply_to_status_id = Some(reply1_tweet.id.clone());
+        reply2_tweet.in_reply_to_status_id = Some(reply1_tweet.id);
         let mut reply3_tweet = get_twitter_status();
         reply3_tweet.id = 4;
         reply3_tweet.user = Some(Box::new(get_twitter_user()));
         reply3_tweet.text = "Reply3".to_string();
         reply3_tweet.in_reply_to_user_id = Some(original_tweet.user.clone().unwrap().id);
-        reply3_tweet.in_reply_to_status_id = Some(reply2_tweet.id.clone());
+        reply3_tweet.in_reply_to_status_id = Some(reply2_tweet.id);
 
         let mut status = get_mastodon_status();
         status.content = "Original".to_string();
@@ -502,7 +502,7 @@ mod tests {
         reply3_tweet.user = Some(Box::new(get_twitter_user()));
         reply3_tweet.text = "Reply3".to_string();
         reply3_tweet.in_reply_to_user_id = Some(original_tweet.user.clone().unwrap().id);
-        reply3_tweet.in_reply_to_status_id = Some(reply2_tweet.id.clone());
+        reply3_tweet.in_reply_to_status_id = Some(reply2_tweet.id);
 
         let mut status = get_mastodon_status();
         status.content = "I will repeat this in a reply".to_string();
