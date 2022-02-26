@@ -2,7 +2,7 @@
 name = "mastodon-twitter-sync"
 version = "1.6.0"
 authors = ["Klaus Purer <klaus.purer@protonmail.ch>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 chrono = ">=0.4.0"
