@@ -60,9 +60,9 @@ pub fn determine_thread_replies(
                     id: tweet.id,
                     text: decoded_tweet,
                     attachments: tweet_get_attachments(tweet),
-                    in_reply_to_id: tweet
-                        .in_reply_to_status_id
-                        .unwrap_or_else(|| panic!("Twitter reply ID missing on tweet {}", tweet.id)),
+                    in_reply_to_id: tweet.in_reply_to_status_id.unwrap_or_else(|| {
+                        panic!("Twitter reply ID missing on tweet {}", tweet.id)
+                    }),
                 },
             );
         }
@@ -116,9 +116,9 @@ pub fn determine_thread_replies(
                         .unwrap_or_else(|_| panic!("Mastodon status ID is not u64: {}", toot.id)),
                     text: post,
                     attachments: toot_get_attachments(toot),
-                    in_reply_to_id: in_reply_to_id
-                        .parse::<u64>()
-                        .unwrap_or_else(|_| panic!("Mastodon reply ID is not u64: {}", in_reply_to_id)),
+                    in_reply_to_id: in_reply_to_id.parse::<u64>().unwrap_or_else(|_| {
+                        panic!("Mastodon reply ID is not u64: {}", in_reply_to_id)
+                    }),
                 },
             );
         }
@@ -158,11 +158,9 @@ fn insert_twitter_replies(
                             text: reply.text.clone(),
                             attachments: reply.attachments.clone(),
                             replies: Vec::new(),
-                            in_reply_to_id: Some(
-                                toot.id
-                                    .parse()
-                                    .unwrap_or_else(|_| panic!("Mastodon status ID is not u64: {}", toot.id)),
-                            ),
+                            in_reply_to_id: Some(toot.id.parse().unwrap_or_else(|_| {
+                                panic!("Mastodon status ID is not u64: {}", toot.id)
+                            })),
                             original_id: reply.id,
                         });
                         continue 'reply_loop;
