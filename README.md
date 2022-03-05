@@ -10,12 +10,22 @@ This tool synchronizes posts from [Mastodon](https://joinmastodon.org/) to [Twit
 * Your Retweet on Twitter will automatically be posted to Mastodon with a "RT username:" prefix
 * Your status update on Mastodon will be posted automatically to Twitter
 * Your boost on Mastodon will be posted automatically to Twitter with a "RT username:" prefix
+* Your own threads (your replies to your own posts) will be synced both ways
 
 ## Old data deletion feature for better privacy
 
 Optionally configuration options can be set to delete posts/favourites from your Mastodon and Twitter accounts that are older than 90 days.
 
 ## Installation and execution
+
+Unfortunately I'm not able to provide precompiled portable Linux binaries because of different OpenSSL versions in different Linux distributions. Let me know if you have ideas how to solve that!
+
+There are 2 options how to run mastodon-twitter-sync:
+
+* Recommended: Compiling yourself (takes a bit of time)
+* using Docker (large 1 GB Docker image download)
+
+### Compiling with cargo (recommended)
 
 This will install Rust and setup API access to Mastodon and Twitter. Follow the text instructions to enter API keys.
 
@@ -26,6 +36,22 @@ git clone https://github.com/klausi/mastodon-twitter-sync.git
 cd mastodon-twitter-sync
 cargo run --release
 ```
+
+### Installing with Docker
+
+You need to have Docker installed on your system, then you can use the [published Docker image](https://hub.docker.com/r/klausi/mastodon-twitter-sync).
+
+The following commands create a directory where the settings file and cache files will be stored. Then we use a Docker volume from that directory to store them persistently.
+
+```
+mkdir mastodon-twitter-sync
+cd mastodon-twitter-sync
+docker run -it --rm -v "$(pwd)":/data klausi/mastodon-twitter-sync
+```
+
+Follow the text instructions to enter API keys.
+
+Use that Docker command as a replacement for `cargo run --release` in the examples in this README.
 
 ## Configuration
 
@@ -90,4 +116,10 @@ Every run of the program only synchronizes the accounts once. Use Cron to run it
 
 ```
 */10 * * * *   cd /home/klausi/workspace/mastodon-twitter-sync && ./target/release/mastodon-twitter-sync
+```
+
+Or for the Docker version:
+
+```
+*/10 * * * *   docker run -it --rm -v /home/klausi/workspace/mastodon-twitter-sync:/data klausi/mastodon-twitter-sync
 ```
