@@ -1,6 +1,6 @@
 [package]
 name = "mastodon-twitter-sync"
-version = "1.6.0"
+version = "1.7.0"
 authors = ["Klaus Purer <klaus.purer@protonmail.ch>"]
 edition = "2021"
 
@@ -24,7 +24,7 @@ serde_json = ">=1.0.6"
 serde_with = ">=1.4"
 structopt = ">=0.2"
 # Tokio 0.3 not compatible with reqwest and Elefren. Try to upgrade later.
-tokio = { version = "<0.3", features = ["fs", "time"] }
+tokio = { version = "0.2", features = ["fs", "time"] }
 unicode-segmentation = ">=1.9"
 
 # Dev version of Elefren because media alt text support is not released yet.
