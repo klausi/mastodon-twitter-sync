@@ -1329,6 +1329,7 @@ dependencies = [
  "tempfile",
  "tokio 0.2.25",
  "toml",
+ "unicode-segmentation",
 ]
 
 [[package]]

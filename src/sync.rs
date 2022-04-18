@@ -6,6 +6,7 @@ use elefren::entities::status::Status;
 use regex::Regex;
 use std::collections::HashSet;
 use std::fs;
+use unicode_segmentation::UnicodeSegmentation;
 
 // Represents new status updates that should be posted to Twitter (tweets) and
 // Mastodon (toots).
@@ -245,7 +246,9 @@ pub fn tweet_unshorten_decode(tweet: &Tweet) -> String {
     tweet.text = tweet.text.replace(" @", " \\@");
 
     // Twitterposts have HTML entities such as &amp;, we need to decode them.
-    dissolve::strip_html_tags(&tweet.text).join("")
+    let decoded = dissolve::strip_html_tags(&tweet.text).join("");
+
+    toot_shorten(&decoded, tweet.id)
 }
 
 // If this is a quote tweet then include the original text.
@@ -314,6 +317,25 @@ pub fn tweet_shorten(text: &str, toot_url: &Option<String>) -> String {
         }
         let new_count = character_count(&with_link, 23, 23);
         char_count = new_count;
+    }
+    with_link
+}
+
+// Mastodon has a 500 character post limit. With embedded quote tweets and long
+// links the content could get too long, shorten it to 500 characters.
+fn toot_shorten(text: &str, tweet_id: u64) -> String {
+    let mut char_count = text.graphemes(true).count();
+    let re = Regex::new(r"[^\s]+$").unwrap();
+    let mut shortened = text.trim().to_string();
+    let mut with_link = shortened.clone();
+
+    // Hard-coding a limit of 500 here for now, could be configurable.
+    while char_count > 500 {
+        // Remove the last word.
+        shortened = re.replace_all(&shortened, "").trim().to_string();
+        // Add a link to the full length tweet.
+        with_link = format!("{shortened}… https://twitter.com/twitter/status/{tweet_id}");
+        char_count = with_link.graphemes(true).count();
     }
     with_link
 }
@@ -1005,6 +1027,77 @@ QT test123: Verhalten bei #Hausdurchsuchung"
 
 QT test123: Original text"
         );
+    }
+
+    // Test that a long tweet and a long quote tweet are shortened to pass the
+    // 500 character limit of Mastodon.
+    #[test]
+    fn long_quote_tweet() {
+        let mut quote_tweet = get_twitter_status();
+        quote_tweet.id = 1515580612391936001;
+        quote_tweet.text = "SQLite is an absolute fascinating open source project by 3 old white men. They reject contributions, have a troll code of conduct and even built their own version control system insted of using git! https://t.co/5mE9PjjAsR".to_string();
+        quote_tweet.entities = TweetEntities {
+            hashtags: Vec::new(),
+            symbols: Vec::new(),
+            urls: vec![UrlEntity {
+                display_url: "twitter.com/test123/statu…".to_string(),
+                expanded_url: Some(
+                    "https://twitter.com/test123/status/1515372417081745410".to_string(),
+                ),
+                range: (199, 222),
+                url: "https://t.co/5mE9PjjAsR".to_string(),
+            }],
+            user_mentions: Vec::new(),
+            media: None,
+        };
+
+        let mut original_tweet = get_twitter_status();
+        original_tweet.text = "Reminder that there's a *very* small group of maintainers on SQLite and they have some odd practices when it comes to building software. They went as far as building their own VCS so no one else could contribute and have this as their \"Code Of Ethics\" https://t.co/2KL9b2BENN https://t.co/NdfoMUScX2".to_string();
+        original_tweet.entities = TweetEntities {
+            hashtags: Vec::new(),
+            symbols: Vec::new(),
+            urls: vec![
+                UrlEntity {
+                    display_url: "sqlite.org/codeofethics.h…".to_string(),
+                    expanded_url: Some("https://sqlite.org/codeofethics.html".to_string()),
+                    range: (252, 275),
+                    url: "https://t.co/2KL9b2BENN".to_string(),
+                },
+                UrlEntity {
+                    display_url: "twitter.com/SebastianSztur…".to_string(),
+                    expanded_url: Some(
+                        "https://twitter.com/SebastianSzturo/status/1515297367335247877"
+                            .to_string(),
+                    ),
+                    range: (276, 299),
+                    url: "https://t.co/NdfoMUScX2".to_string(),
+                },
+            ],
+            user_mentions: Vec::new(),
+            media: None,
+        };
+        original_tweet.user = Some(Box::new(get_twitter_user()));
+        original_tweet.id = 1515372417081745410;
+        quote_tweet.quoted_status = Some(Box::new(original_tweet));
+
+        let tweets = vec![quote_tweet];
+        let toots = Vec::new();
+        let posts = determine_posts(&toots, &tweets, &DEFAULT_SYNC_OPTIONS);
+
+        let sync_toot = &posts.toots[0];
+        assert_eq!(
+            sync_toot.text,
+            "SQLite is an absolute fascinating open source project by 3 old white men. They reject contributions, have a troll code of conduct and even built their own version control system insted of using git!
+
+QT test123: Reminder that there's a *very* small group of maintainers on SQLite and they have some odd practices when it comes to building software. They went as far as building their own VCS so no one else could contribute and have this as… https://twitter.com/twitter/status/1515580612391936001"
+        );
+
+        // Also test that a shortened toot is detected as equal.
+        let mut status = get_mastodon_status();
+        status.content = sync_toot.text.clone();
+        let posts = determine_posts(&vec![status], &tweets, &DEFAULT_SYNC_OPTIONS);
+        assert!(posts.toots.is_empty());
+        assert!(posts.tweets.is_empty());
     }
 
     // Test that retweets are ignored when `sync_retweets` is `false`

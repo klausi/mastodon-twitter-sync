@@ -25,6 +25,7 @@ serde_with = ">=1.4"
 structopt = ">=0.2"
 # Tokio 0.3 not compatible with reqwest and Elefren. Try to upgrade later.
 tokio = { version = "<0.3", features = ["fs", "time"] }
+unicode-segmentation = ">=1.9"
 
 # Dev version of Elefren because media alt text support is not released yet.
 # The original Github repository of the project was also deleted, so we have to
