@@ -29,11 +29,16 @@ mod registration;
 mod sync;
 mod thread_replies;
 
-async fn run() -> Result<()> {
+fn run() -> Result<()> {
     env_logger::init();
 
     let args = Args::from_args();
     debug!("running with args {:?}", args);
+
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("Failed to create tokio runtime");
 
     let config = match fs::read_to_string(&args.config) {
         Ok(config) => config_load(&config)?,
@@ -195,9 +200,8 @@ async fn run() -> Result<()> {
     Ok(())
 }
 
-#[tokio::main]
-async fn main() {
-    if let Err(err) = run().await {
+fn main() {
+    if let Err(err) = run() {
         eprintln!("Error: {}", err);
         for cause in err.iter_chain().skip(1) {
             eprintln!("Because: {}", cause);

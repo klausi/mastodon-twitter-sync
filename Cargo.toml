@@ -7,32 +7,29 @@ edition = "2021"
 [dependencies]
 chrono = ">=0.4.0"
 dissolve = ">=0.2.2"
-# Elefren is still on Tokio 0.2, so we also need to keep egg-mode down.
-egg-mode = "<0.16"
+egg-mode = ">=0.16"
 egg-mode-text = ">=1.14.7"
 env_logger = ">=0.7.1"
 failure = ">=0.1.5"
 log = ">=0.4.8"
 mime = ">=0.3.13"
 regex = ">=0.2.2"
-# Elefren is still on Tokio 0.2, so we also need to keep reqwest down.
-reqwest = ">=0.10, <0.11"
+reqwest = ">=0.11"
 serde = { version = ">=1.0", features = ["derive"] }
 tempfile = ">=3"
 toml = ">=0.4.5"
 serde_json = ">=1.0.6"
 serde_with = ">=1.4"
 structopt = ">=0.2"
-# Tokio 0.3 not compatible with reqwest and Elefren. Try to upgrade later.
-tokio = { version = "0.2", features = ["fs", "time"] }
+tokio = { version = ">=1.0", features = ["rt", "macros", "fs", "time"] }
 unicode-segmentation = ">=1.9"
 
 # Dev version of Elefren because media alt text support is not released yet.
 # The original Github repository of the project was also deleted, so we have to
 # use this mirror.
 [dependencies.elefren]
-git = "https://github.com/DeeUnderscore/elefren"
-rev = "44da726d08ff20a67ae8f3845b0008269e1a2076"
+git = "https://github.com/klausi/elefren"
+rev = "3711a81481582b61c2db620d4408ef7252858270"
 
 [profile.release]
 # Enabled to have a smaller binary size.
