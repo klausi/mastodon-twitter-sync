@@ -38,14 +38,14 @@ fn run() -> Result<()> {
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
-        .expect("Failed to create tokio runtime");
+        .context("Failed to create tokio runtime")?;
 
     let config = match fs::read_to_string(&args.config) {
         Ok(config) => config_load(&config)?,
         Err(_) => {
             let mastodon = mastodon_register().context("Failed to setup mastodon account")?;
-            let twitter_config = twitter_register()
-                .await
+            let twitter_config = rt
+                .block_on(twitter_register())
                 .context("Failed to setup twitter account")?;
             let config = Config {
                 mastodon: MastodonConfig {
@@ -102,7 +102,7 @@ fn run() -> Result<()> {
     let timeline = egg_mode::tweet::user_timeline(config.twitter.user_id, true, true, &token)
         .with_page_size(50);
 
-    let (timeline, first_tweets) = match timeline.start().await {
+    let (timeline, first_tweets) = match rt.block_on(timeline.start()) {
         Ok(tweets) => tweets,
         Err(e) => {
             println!("Error fetching tweets from Twitter: {:#?}", e);
@@ -113,7 +113,7 @@ fn run() -> Result<()> {
     // We might have only one tweet because of filtering out reply tweets. Fetch
     // some more tweets to make sure we have enough for comparing.
     if tweets.len() < 50 {
-        let (_, next_tweets) = match timeline.older(None).await {
+        let (_, next_tweets) = match rt.block_on(timeline.older(None)) {
             Ok(tweets) => tweets,
             Err(e) => {
                 println!("Error fetching older tweets from Twitter: {:#?}", e);
@@ -141,7 +141,7 @@ fn run() -> Result<()> {
 
     for toot in posts.toots {
         if !args.skip_existing_posts {
-            if let Err(e) = post_to_mastodon(&mastodon, &toot, args.dry_run).await {
+            if let Err(e) = rt.block_on(post_to_mastodon(&mastodon, &toot, args.dry_run)) {
                 println!("Error posting toot to Mastodon: {:#?}", e);
                 process::exit(5);
             }
@@ -156,7 +156,7 @@ fn run() -> Result<()> {
 
     for tweet in posts.tweets {
         if !args.skip_existing_posts {
-            if let Err(e) = post_to_twitter(&token, &tweet, args.dry_run).await {
+            if let Err(e) = rt.block_on(post_to_twitter(&token, &tweet, args.dry_run)) {
                 println!("Error posting tweet to Twitter: {:#?}", e);
                 process::exit(6);
             }
@@ -181,9 +181,12 @@ fn run() -> Result<()> {
             .context("Failed to delete old mastodon statuses")?;
     }
     if config.twitter.delete_older_statuses {
-        twitter_delete_older_statuses(config.twitter.user_id, &token, args.dry_run)
-            .await
-            .context("Failed to delete old twitter statuses")?;
+        rt.block_on(twitter_delete_older_statuses(
+            config.twitter.user_id,
+            &token,
+            args.dry_run,
+        ))
+        .context("Failed to delete old twitter statuses")?;
     }
 
     // Delete old mastodon favourites if that option is enabled.
@@ -192,9 +195,12 @@ fn run() -> Result<()> {
             .context("Failed to delete old mastodon favs")?;
     }
     if config.twitter.delete_older_favs {
-        twitter_delete_older_favs(config.twitter.user_id, &token, args.dry_run)
-            .await
-            .context("Failed to delete old twitter favs")?;
+        rt.block_on(twitter_delete_older_favs(
+            config.twitter.user_id,
+            &token,
+            args.dry_run,
+        ))
+        .context("Failed to delete old twitter favs")?;
     }
 
     Ok(())

@@ -381,7 +381,7 @@ dependencies = [
 [[package]]
 name = "elefren"
 version = "0.23.0"
-source = "git+https://github.com/klausi/elefren?rev=3711a81481582b61c2db620d4408ef7252858270#3711a81481582b61c2db620d4408ef7252858270"
+source = "git+https://github.com/klausi/elefren?rev=ffb8c586e5a5e111abf15c8385f60f159033fac1#ffb8c586e5a5e111abf15c8385f60f159033fac1"
 dependencies = [
  "async-trait",
  "chrono",
@@ -395,7 +395,6 @@ dependencies = [
  "serde_qs",
  "serde_urlencoded",
  "tap-reader",
- "tokio",
  "tungstenite",
  "url",
 ]
