@@ -141,7 +141,7 @@ fn run() -> Result<()> {
 
     for toot in posts.toots {
         if !args.skip_existing_posts {
-            if let Err(e) = rt.block_on(post_to_mastodon(&mastodon, &toot, args.dry_run)) {
+            if let Err(e) = post_to_mastodon(&mastodon, &toot, args.dry_run) {
                 println!("Error posting toot to Mastodon: {:#?}", e);
                 process::exit(5);
             }
