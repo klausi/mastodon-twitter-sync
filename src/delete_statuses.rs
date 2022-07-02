@@ -1,4 +1,4 @@
-use crate::errors::*;
+use anyhow::Result;
 use chrono::prelude::*;
 use chrono::Duration;
 use egg_mode::error::Error as EggModeError;
@@ -37,7 +37,7 @@ pub fn mastodon_delete_older_statuses(
         if let Err(error) = mastodon.delete_status(&format!("{}", toot_id)) {
             match error {
                 ElefrenError::Api(_) => {}
-                _ => return wrap_elefren_error(Err(error)),
+                _ => return Err(error.into()),
             }
         }
     }
@@ -61,13 +61,13 @@ fn mastodon_fetch_toot_dates(
     cache_file: &str,
 ) -> Result<BTreeMap<DateTime<Utc>, u64>> {
     let mut dates = BTreeMap::new();
-    let mut pager = wrap_elefren_error(mastodon.statuses(&account.id, None))?;
+    let mut pager = mastodon.statuses(&account.id, None)?;
     for status in &pager.initial_items {
         let id = u64::from_str(&status.id)?;
         dates.insert(status.created_at, id);
     }
     loop {
-        let statuses = wrap_elefren_error(pager.next_page())?;
+        let statuses = pager.next_page()?;
         if let Some(statuses) = statuses {
             for status in statuses {
                 let id = u64::from_str(&status.id)?;
@@ -112,7 +112,7 @@ pub async fn twitter_delete_older_statuses(
             // Error 63 is "User has been suspended".
             // Error 179 is "Sorry, you are not authorized to see this status".
             if e.len() != 1 || (e[0].code != 144 && e[0].code != 63 && e[0].code != 179) {
-                return Err(Error::from(EggModeError::TwitterError(
+                return Err(anyhow::Error::from(EggModeError::TwitterError(
                     headers,
                     TwitterErrors { errors: e },
                 )));

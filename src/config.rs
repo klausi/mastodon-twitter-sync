@@ -1,4 +1,4 @@
-use crate::errors::*;
+use anyhow::Result;
 use chrono::prelude::*;
 use elefren::data::Data;
 use serde::{Deserialize, Serialize};
@@ -8,7 +8,7 @@ use std::fs::remove_file;
 
 #[inline]
 pub fn config_load(config: &str) -> Result<Config> {
-    toml::from_str(config).map_err(Error::from)
+    toml::from_str(config).map_err(anyhow::Error::from)
 }
 
 #[derive(Debug, Serialize, Deserialize)]

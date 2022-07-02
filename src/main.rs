@@ -1,3 +1,5 @@
+use anyhow::Context;
+use anyhow::Result;
 use elefren::prelude::*;
 use elefren::{Mastodon, StatusesRequest};
 use std::fs;
@@ -13,7 +15,6 @@ use crate::config::*;
 use crate::delete_favs::*;
 use crate::delete_statuses::mastodon_delete_older_statuses;
 use crate::delete_statuses::twitter_delete_older_statuses;
-use crate::errors::*;
 use crate::post::*;
 use crate::registration::mastodon_register;
 use crate::registration::twitter_register;
@@ -23,7 +24,6 @@ mod args;
 mod config;
 mod delete_favs;
 mod delete_statuses;
-mod errors;
 mod post;
 mod registration;
 mod sync;
@@ -209,7 +209,7 @@ fn run() -> Result<()> {
 fn main() {
     if let Err(err) = run() {
         eprintln!("Error: {}", err);
-        for cause in err.iter_chain().skip(1) {
+        for cause in err.chain().skip(1) {
             eprintln!("Because: {}", cause);
         }
         std::process::exit(1);

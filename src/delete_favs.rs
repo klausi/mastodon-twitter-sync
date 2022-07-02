@@ -1,4 +1,4 @@
-use crate::errors::*;
+use anyhow::Result;
 use chrono::prelude::*;
 use chrono::Duration;
 use egg_mode::error::Error as EggModeError;
@@ -32,7 +32,7 @@ pub fn mastodon_delete_older_favs(mastodon: &Mastodon, dry_run: bool) -> Result<
         if let Err(error) = mastodon.unfavourite(&format!("{}", toot_id)) {
             match error {
                 ElefrenError::Api(_) => {}
-                _ => return wrap_elefren_error(Err(error)),
+                _ => return Err(error.into()),
             }
         }
     }
@@ -54,13 +54,13 @@ fn mastodon_fetch_fav_dates(
     cache_file: &str,
 ) -> Result<BTreeMap<DateTime<Utc>, u64>> {
     let mut dates = BTreeMap::new();
-    let mut favourites_pager = wrap_elefren_error(mastodon.favourites())?;
+    let mut favourites_pager = mastodon.favourites()?;
     for status in &favourites_pager.initial_items {
         let id = u64::from_str(&status.id)?;
         dates.insert(status.created_at, id);
     }
     loop {
-        let statuses = wrap_elefren_error(favourites_pager.next_page())?;
+        let statuses = favourites_pager.next_page()?;
         if let Some(statuses) = statuses {
             for status in statuses {
                 let id = u64::from_str(&status.id)?;
@@ -103,7 +103,7 @@ pub async fn twitter_delete_older_favs(
         {
             // Error 144 is "No status found with that ID".
             if e.len() != 1 || e[0].code != 144 {
-                return Err(Error::from(EggModeError::TwitterError(
+                return Err(anyhow::Error::from(EggModeError::TwitterError(
                     headers,
                     TwitterErrors { errors: e },
                 )));

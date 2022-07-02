@@ -1,5 +1,5 @@
-use crate::errors::*;
 use crate::thread_replies::*;
+use anyhow::Result;
 use egg_mode::tweet::Tweet;
 use egg_mode_text::character_count;
 use elefren::entities::status::Status;

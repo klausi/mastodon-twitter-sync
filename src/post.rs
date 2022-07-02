@@ -1,5 +1,8 @@
-use crate::errors::*;
 use crate::sync::NewStatus;
+use anyhow::bail;
+use anyhow::format_err;
+use anyhow::Context;
+use anyhow::Result;
 use egg_mode::media::ProgressInfo::{Failed, InProgress, Pending, Success};
 use egg_mode::media::{set_metadata, upload_media};
 use egg_mode::tweet::DraftTweet;
@@ -8,8 +11,6 @@ use elefren::media_builder::MediaBuilder;
 use elefren::status_builder::StatusBuilder;
 use elefren::Mastodon;
 use elefren::MastodonClient;
-use failure::bail;
-use failure::format_err;
 use reqwest::header::CONTENT_TYPE;
 use std::fs::File;
 use std::io::Write;
@@ -90,12 +91,12 @@ fn send_single_post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus) -> Result
         file.write_all(&response.bytes()?)?;
 
         let attachment = match &attachment.alt_text {
-            None => wrap_elefren_error(mastodon.media(string_path.into()))?,
-            Some(description) => wrap_elefren_error(mastodon.media(MediaBuilder {
+            None => mastodon.media(string_path.into())?,
+            Some(description) => mastodon.media(MediaBuilder {
                 file: string_path.into(),
                 description: Some(description.clone().into()),
                 focus: None,
-            }))?,
+            })?,
         };
 
         media_ids.push(attachment.id);
@@ -108,8 +109,8 @@ fn send_single_post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus) -> Result
         status_builder.in_reply_to(parent_id.to_string());
     }
 
-    let draft_status = wrap_elefren_error(status_builder.build())?;
-    let status = wrap_elefren_error(mastodon.new_status(draft_status))?;
+    let draft_status = status_builder.build()?;
+    let status = mastodon.new_status(draft_status)?;
     let id = status
         .id
         .parse::<u64>()
