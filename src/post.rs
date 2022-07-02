@@ -11,15 +11,15 @@ use elefren::MastodonClient;
 use failure::bail;
 use failure::format_err;
 use reqwest::header::CONTENT_TYPE;
+use std::fs::File;
+use std::io::Write;
 use std::path::Path;
 use std::time::Duration;
 use tempfile::tempdir;
-use tokio::fs::File;
-use tokio::prelude::*;
-use tokio::time::delay_for;
+use tokio::time::sleep;
 
 /// Send new status with any given replies to Mastodon.
-pub async fn post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus, dry_run: bool) -> Result<()> {
+pub fn post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus, dry_run: bool) -> Result<()> {
     if let Some(reply_to) = toot.in_reply_to_id {
         println!(
             "Posting thread reply for {} to Mastodon: {}",
@@ -30,7 +30,7 @@ pub async fn post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus, dry_run: bo
     }
     let mut status_id = 0;
     if !dry_run {
-        status_id = send_single_post_to_mastodon(mastodon, toot).await?;
+        status_id = send_single_post_to_mastodon(mastodon, toot)?;
     }
 
     // Recursion does not work well with async functions, so we use iteration
@@ -52,7 +52,7 @@ pub async fn post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus, dry_run: bo
         );
         let mut parent_status_id = 0;
         if !dry_run {
-            parent_status_id = send_single_post_to_mastodon(mastodon, &new_reply).await?;
+            parent_status_id = send_single_post_to_mastodon(mastodon, &new_reply)?;
         }
         for remaining_reply in &reply.replies {
             replies.push((parent_status_id, remaining_reply));
@@ -63,7 +63,7 @@ pub async fn post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus, dry_run: bo
 }
 
 /// Sends the given new status to Mastodon.
-async fn send_single_post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus) -> Result<u64> {
+fn send_single_post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus) -> Result<u64> {
     let mut media_ids = Vec::new();
     // Temporary directory where we will download any file attachments to.
     let temp_dir = tempdir()?;
@@ -71,12 +71,10 @@ async fn send_single_post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus) -> 
     for attachment in &toot.attachments {
         // Because we use async for egg-mode we also need to use reqwest in
         // async mode. Otherwise we get double async executor errors.
-        let response = reqwest::get(&attachment.attachment_url)
-            .await
-            .context(format!(
-                "Failed downloading attachment {}",
-                attachment.attachment_url
-            ))?;
+        let response = reqwest::blocking::get(&attachment.attachment_url).context(format!(
+            "Failed downloading attachment {}",
+            attachment.attachment_url
+        ))?;
         let file_name = match Path::new(response.url().path()).file_name() {
             Some(f) => f,
             None => bail!(
@@ -88,8 +86,8 @@ async fn send_single_post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus) -> 
         let path = temp_dir.path().join(file_name);
         let string_path = path.to_string_lossy().into_owned();
 
-        let mut file = File::create(path).await?;
-        file.write_all(&response.bytes().await?).await?;
+        let mut file = File::create(path)?;
+        file.write_all(&response.bytes()?)?;
 
         let attachment = match &attachment.alt_text {
             None => wrap_elefren_error(mastodon.media(string_path.into()))?,
@@ -199,7 +197,7 @@ async fn send_single_post_to_twitter(token: &Token, tweet: &NewStatus) -> Result
             };
 
             if wait_seconds > 0 {
-                delay_for(Duration::from_secs(wait_seconds)).await;
+                sleep(Duration::from_secs(wait_seconds)).await;
                 media_handle = egg_mode::media::get_status(media_handle.id, token).await?;
             } else {
                 break;
