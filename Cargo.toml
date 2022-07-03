@@ -8,6 +8,7 @@ edition = "2021"
 chrono = ">=0.4.0"
 dissolve = ">=0.2.2"
 egg-mode = ">=0.16"
+egg-mode-text = ">=1.15.0"
 env_logger = ">=0.7.1"
 anyhow = ">=1"
 log = ">=0.4.8"
@@ -29,12 +30,6 @@ unicode-segmentation = ">=1.9"
 [dependencies.elefren]
 git = "https://github.com/klausi/elefren"
 rev = "ffb8c586e5a5e111abf15c8385f60f159033fac1"
-
-# Insecure egg-mode-text regex dependency
-# see https://github.com/egg-mode-rs/egg-mode-text/pull/1
-[dependencies.egg-mode-text]
-git = "https://github.com/Freaky/egg-mode-text"
-rev = "2ce2b069c135d3d048f9f4e65b794bdb0e86b79e"
 
 [profile.release]
 # Enabled to have a smaller binary size.

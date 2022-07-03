@@ -336,8 +336,9 @@ dependencies = [
 
 [[package]]
 name = "egg-mode-text"
-version = "1.14.7"
-source = "git+https://github.com/Freaky/egg-mode-text?rev=2ce2b069c135d3d048f9f4e65b794bdb0e86b79e#2ce2b069c135d3d048f9f4e65b794bdb0e86b79e"
+version = "1.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8c83fe6fa4bcb27d9ebab2856f6515590ac621cac1f1dc51d9410b7e546d77ac"
 dependencies = [
  "lazy_static 1.4.0",
  "regex",
