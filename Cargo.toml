@@ -19,7 +19,7 @@ serde = { version = ">=1.0", features = ["derive"] }
 tempfile = ">=3"
 toml = ">=0.4.5"
 serde_json = ">=1.0.6"
-serde_with = ">=1.4"
+serde_with = ">=2"
 structopt = ">=0.2"
 tokio = { version = ">=1.0", features = ["rt", "macros", "fs", "time"] }
 unicode-segmentation = ">=1.9"

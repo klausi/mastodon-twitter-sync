@@ -2,6 +2,8 @@ use anyhow::Result;
 use chrono::prelude::*;
 use elefren::data::Data;
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
+use serde_with::NoneAsEmptyString;
 use std::collections::BTreeMap;
 use std::fs;
 use std::fs::remove_file;
@@ -17,6 +19,7 @@ pub struct Config {
     pub twitter: TwitterConfig,
 }
 
+#[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MastodonConfig {
     pub delete_older_statuses: bool,
@@ -24,14 +27,13 @@ pub struct MastodonConfig {
     pub delete_older_favs: bool,
     #[serde(default = "config_true_default")]
     pub sync_reblogs: bool,
-    #[serde(
-        with = "serde_with::rust::string_empty_as_none",
-        default = "config_none_default"
-    )]
+    #[serde_as(as = "NoneAsEmptyString")]
+    #[serde(default = "config_none_default")]
     pub sync_hashtag: Option<String>,
     pub app: Data,
 }
 
+#[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TwitterConfig {
     pub consumer_key: String,
@@ -46,10 +48,8 @@ pub struct TwitterConfig {
     pub delete_older_favs: bool,
     #[serde(default = "config_true_default")]
     pub sync_retweets: bool,
-    #[serde(
-        with = "serde_with::rust::string_empty_as_none",
-        default = "config_none_default"
-    )]
+    #[serde_as(as = "NoneAsEmptyString")]
+    #[serde(default = "config_none_default")]
     pub sync_hashtag: Option<String>,
 }
 
