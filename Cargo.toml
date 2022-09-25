@@ -5,12 +5,12 @@ authors = ["Klaus Purer <klaus.purer@protonmail.ch>"]
 edition = "2021"
 
 [dependencies]
+anyhow = ">=1"
 chrono = ">=0.4.0"
-dissolve = ">=0.2.2"
 egg-mode = ">=0.16"
 egg-mode-text = ">=1.15.0"
 env_logger = ">=0.7.1"
-anyhow = ">=1"
+html-escape = ">=0.2.11"
 log = ">=0.4.8"
 mime = ">=0.3.13"
 regex = ">=0.2.2"
@@ -23,6 +23,7 @@ serde_with = ">=2"
 structopt = ">=0.2"
 tokio = { version = ">=1.0", features = ["rt", "macros", "fs", "time"] }
 unicode-segmentation = ">=1.9"
+voca_rs = ">=1.14.0"
 
 # Dev version of Elefren because media alt text support is not released yet.
 # The original Github repository of the project was also deleted, so we have to

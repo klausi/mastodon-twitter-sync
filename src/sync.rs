@@ -246,7 +246,7 @@ pub fn tweet_unshorten_decode(tweet: &Tweet) -> String {
     tweet.text = tweet.text.replace(" @", " \\@");
 
     // Twitterposts have HTML entities such as &amp;, we need to decode them.
-    let decoded = dissolve::strip_html_tags(&tweet.text).join("");
+    let decoded = html_escape::decode_html_entities(&tweet.text);
 
     toot_shorten(&decoded, tweet.id)
 }
@@ -350,11 +350,13 @@ pub fn mastodon_toot_get_text(toot: &Status) -> String {
     replaced = replaced.replace("<br>", "\n");
     replaced = replaced.replace("</p><p>", "\n\n");
     replaced = replaced.replace("<p>", "");
+    replaced = replaced.replace("</p>", "");
 
     // Escape direct user mentions with \@.
     replaced = replaced.replace(" @", " \\@");
 
-    dissolve::strip_html_tags(&replaced).join("")
+    replaced = voca_rs::strip::strip_tags(&replaced);
+    html_escape::decode_html_entities(&replaced).to_string()
 }
 
 // Ensure that sync posts have not been made before to prevent syncing loops.
