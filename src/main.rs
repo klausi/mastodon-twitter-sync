@@ -1,12 +1,12 @@
 use anyhow::Context;
 use anyhow::Result;
+use clap::StructOpt;
 use elefren::prelude::*;
 use elefren::{Mastodon, StatusesRequest};
 use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
 use std::process;
-use structopt::StructOpt;
 
 use log::debug;
 
