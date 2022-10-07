@@ -1,14 +1,13 @@
 use anyhow::Context;
 use anyhow::Result;
-use clap::StructOpt;
+use clap::Parser;
 use elefren::prelude::*;
 use elefren::{Mastodon, StatusesRequest};
+use log::debug;
 use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
 use std::process;
-
-use log::debug;
 
 use crate::args::*;
 use crate::config::*;
@@ -32,7 +31,7 @@ mod thread_replies;
 fn run() -> Result<()> {
     env_logger::init();
 
-    let args = Args::from_args();
+    let args = Args::parse();
     debug!("running with args {:?}", args);
 
     let rt = tokio::runtime::Builder::new_multi_thread()
