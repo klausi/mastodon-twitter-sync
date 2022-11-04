@@ -28,9 +28,9 @@ checksum = "98161a4e3e2184da77bb14f02184cdd111e83bbbcc9979dfee3c44b9a85f5602"
 
 [[package]]
 name = "async-trait"
-version = "0.1.57"
+version = "0.1.58"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76464446b8bc32758d7e88ee1a804d9914cd9b1cb264c029899680b0be29826f"
+checksum = "1e805d94e6b5001b651426cf4cd446b1ab5f319d27bab5c644f61de0a804360c"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -335,7 +335,7 @@ dependencies = [
 [[package]]
 name = "elefren"
 version = "0.23.0"
-source = "git+https://github.com/klausi/elefren?rev=ffb8c586e5a5e111abf15c8385f60f159033fac1#ffb8c586e5a5e111abf15c8385f60f159033fac1"
+source = "git+https://github.com/klausi/elefren?rev=9f11923dfeea5e9d5d903d492062ede70585198f#9f11923dfeea5e9d5d903d492062ede70585198f"
 dependencies = [
  "async-trait",
  "chrono",
@@ -769,9 +769,9 @@ checksum = "879d54834c8c76457ef4293a689b2a8c59b076067ad77b15efafbb05f92a592b"
 
 [[package]]
 name = "isolang"
-version = "2.1.0"
+version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "720d09e8448b06a11e55045787204657bfbdac62201ac7388fa5e3d88e463175"
+checksum = "b64fd6448ee8a45ce6e4365c58e4fa7d8740cba2ed70db3e9ab4879ebd93eaaa"
 dependencies = [
  "phf",
  "serde",
