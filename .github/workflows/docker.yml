@@ -6,7 +6,7 @@ on:
       - 'master'
 
 jobs:
-  docker-alpine:
+  docker:
     runs-on: ubuntu-latest
     environment: Docker
     steps:
@@ -23,16 +23,8 @@ jobs:
           username: klausi
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       -
-        name: Build and push alpine image
+        name: Build and push
         uses: docker/build-push-action@v2
         with:
           push: true
-          tags: klausi/mastodon-twitter-sync:latest,klausi/mastodon-twitter-sync:alpine
-
-      -
-        name: Build and push debian image
-        uses: docker/build-push-action@v2
-        with:
-          file: ./debian.Dockerfile
-          push: true
-          tags: klausi/mastodon-twitter-sync:debian
+          tags: klausi/mastodon-twitter-sync:latest
