@@ -16,6 +16,8 @@ RUN cargo vendor >> /code/.cargo/config.toml
 COPY src /code/src
 RUN cargo build --release --offline
 
+# We get segmentation faults with the Alpine image, so we use the bigger Debian
+# one.
 FROM debian:bullseye
 
 COPY --from=builder /code/target/release/mastodon-twitter-sync /usr/bin/mastodon-twitter-sync
