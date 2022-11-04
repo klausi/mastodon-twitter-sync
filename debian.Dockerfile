@@ -1,8 +1,6 @@
-# This is for an image based on alpine.
+# This is for an image based on debian
 
-FROM rust:1-alpine AS builder
-
-RUN apk add --no-cache musl-dev openssl-dev
+FROM rust:1-bullseye AS builder
 
 ENV USER=root
 WORKDIR /code
@@ -17,9 +15,7 @@ RUN cargo vendor >> /code/.cargo/config.toml
 COPY src /code/src
 RUN cargo build --release --offline
 
-FROM alpine:latest
-
-RUN apk add --no-cache musl-dev
+FROM debian:bullseye
 
 COPY --from=builder /code/target/release/mastodon-twitter-sync /usr/bin/mastodon-twitter-sync
 
