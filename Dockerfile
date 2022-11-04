@@ -1,17 +1,30 @@
-# We get segmentation faults with the Alpine Rust image, so we use the bigger
-# default one.
-FROM rust:latest
 
-# Only if the Rust source files change do we need to recompile and invalidate
-# the Docker cache.
-WORKDIR /usr/src/mastodon-twitter-sync
-COPY src src
-COPY Cargo* ./
+# This is for an image based on debian
 
-RUN cargo install --path .
+FROM rust:1-bullseye AS builder
+
+ENV USER=root
+WORKDIR /code
+RUN cargo init
+
+# Fetch all the dependencies without loading the code to have an independant layer
+COPY Cargo.lock Cargo.toml /code/
+RUN mkdir -p /code/.cargo
+RUN cargo vendor >> /code/.cargo/config.toml
+
+# Copy the source code and compile
+COPY src /code/src
+RUN cargo build --release --offline
+
+FROM debian:bullseye
+
+COPY --from=builder /code/target/release/mastodon-twitter-sync /usr/bin/mastodon-twitter-sync
+
+# The HTTP client needs TLS certificates.
+RUN apt-get -y update && apt-get -y install ca-certificates
 
 # Use a separate workdir so that users can have a Docker volume with their
 # settings file. Cache files will also be written here.
 WORKDIR /data
 
-ENTRYPOINT ["mastodon-twitter-sync"]
+ENTRYPOINT ["/usr/bin/mastodon-twitter-sync"]
