@@ -27,11 +27,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           push: true
-          tags:
-            # Multiple tags do not work, how could we define both
-            # klausi/mastodon-twitter-sync:latest and
-            # klausi/mastodon-twitter-sync:alpine here?
-            - klausi/mastodon-twitter-sync:latest
+          tags: klausi/mastodon-twitter-sync:latest,klausi/mastodon-twitter-sync:alpine
 
       -
         name: Build and push debian image
