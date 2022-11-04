@@ -28,7 +28,10 @@ jobs:
         with:
           push: true
           tags:
-            - klausi/mastodon-twitter-sync:latest,klausi/mastodon-twitter-sync:alpine
+            # Multiple tags do not work, how could we define both
+            # klausi/mastodon-twitter-sync:latest and
+            # klausi/mastodon-twitter-sync:alpine here?
+            - klausi/mastodon-twitter-sync:latest
 
       -
         name: Build and push debian image
