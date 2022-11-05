@@ -1,7 +1,8 @@
+# This is for an image based on alpine.
 
-# This is for an image based on debian
+FROM rust:1-alpine AS builder
 
-FROM rust:1-bullseye AS builder
+RUN apk add --no-cache musl-dev openssl-dev
 
 ENV USER=root
 WORKDIR /code
@@ -16,14 +17,11 @@ RUN cargo vendor >> /code/.cargo/config.toml
 COPY src /code/src
 RUN cargo build --release --offline
 
-# We get segmentation faults with the Alpine image, so we use the bigger Debian
-# one.
-FROM debian:bullseye
+FROM alpine:latest
+
+RUN apk add --no-cache musl-dev
 
 COPY --from=builder /code/target/release/mastodon-twitter-sync /usr/bin/mastodon-twitter-sync
-
-# The HTTP client needs TLS certificates.
-RUN apt-get -y update && apt-get -y install ca-certificates
 
 # Use a separate workdir so that users can have a Docker volume with their
 # settings file. Cache files will also be written here.
