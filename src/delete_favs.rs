@@ -9,13 +9,14 @@ use elefren::MastodonClient;
 use std::collections::BTreeMap;
 use std::str::FromStr;
 
+use crate::cache_file;
 use crate::config::*;
 
 // Delete old favourites of this account that are older than 90 days.
 pub fn mastodon_delete_older_favs(mastodon: &Mastodon, dry_run: bool) -> Result<()> {
     // In order not to fetch old favs every time keep them in a cache file
     // keyed by their dates.
-    let cache_file = "mastodon_fav_cache.json";
+    let cache_file = &cache_file("mastodon_fav_cache.json");
     let dates = mastodon_load_fav_dates(mastodon, cache_file)?;
     let mut remove_dates = Vec::new();
     let three_months_ago = Utc::now() - Duration::days(90);
@@ -84,7 +85,7 @@ pub async fn twitter_delete_older_favs(
 ) -> Result<()> {
     // In order not to fetch old likes every time keep them in a cache file
     // keyed by their dates.
-    let cache_file = "twitter_fav_cache.json";
+    let cache_file = &cache_file("twitter_fav_cache.json");
     let dates = twitter_load_fav_dates(user_id, token, cache_file).await?;
     let mut remove_dates = Vec::new();
     let three_months_ago = Utc::now() - Duration::days(90);

@@ -1,0 +1,14 @@
+[package]
+name = "mastodon-twitter-sync-aws"
+version = "1.7.0"
+authors = ["Klaus Purer <klaus.purer@protonmail.ch>"]
+description = "AWS Lamda runtime for mastodon-twitter-sync"
+edition = "2021"
+
+[dependencies]
+lambda_runtime = "0.7"
+serde_json = ">=1.0.6"
+tokio = { version = "1", features = ["macros"] }
+tracing = { version = "0.1", features = ["log"] }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt"] }
+mastodon-twitter-sync = { path = ".." }
