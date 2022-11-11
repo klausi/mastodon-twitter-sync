@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - 'master'
+    # Only build Docker images if relevant files change.
+    paths:
+      - .github/docker.yml
+      - src**
+      - .dockerignore
+      - Cargo*
+      - Dockerfile
 
 jobs:
   docker:

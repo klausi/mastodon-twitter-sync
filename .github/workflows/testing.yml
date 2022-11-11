@@ -1,4 +1,16 @@
-on: [push, pull_request]
+on:
+  push:
+    # Only run Tests if Rust source files change.
+    paths:
+      - .github/testing.yml
+      - src**
+      - Cargo*
+  pull_request:
+    # Only run Tests if Rust source files change.
+    paths:
+      - .github/testing.yml
+      - src**
+      - Cargo*
 
 name: Testing
 
