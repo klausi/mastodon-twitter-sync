@@ -6,7 +6,7 @@ on:
       - 'master'
     # Only build Docker images if relevant files change.
     paths:
-      - .github/docker.yml
+      - .github/workflows/docker.yml
       - src**
       - .dockerignore
       - Cargo*
