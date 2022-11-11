@@ -11,6 +11,7 @@ use elefren::media_builder::MediaBuilder;
 use elefren::status_builder::StatusBuilder;
 use elefren::Mastodon;
 use elefren::MastodonClient;
+use log::warn;
 use reqwest::header::CONTENT_TYPE;
 use std::fs::File;
 use std::io::Write;
@@ -167,7 +168,7 @@ pub async fn post_to_twitter(token: &Token, tweet: &NewStatus, dry_run: bool) ->
 /// Sends the given new status to Twitter.
 async fn send_single_post_to_twitter(token: &Token, tweet: &NewStatus) -> Result<u64> {
     let mut draft = DraftTweet::new(tweet.text.clone());
-    for attachment in &tweet.attachments {
+    'attachments: for attachment in &tweet.attachments {
         let response = reqwest::get(&attachment.attachment_url).await?;
         let media_type = response
             .headers()
@@ -185,6 +186,13 @@ async fn send_single_post_to_twitter(token: &Token, tweet: &NewStatus) -> Result
                 Some(progress) => match progress {
                     Pending(seconds) | InProgress(seconds) => seconds,
                     Failed(error) => {
+                        if error.code == 3 {
+                            warn!(
+                                "Skipping unsupported media attachment {}, because of {}",
+                                attachment.attachment_url, error
+                            );
+                            continue 'attachments;
+                        }
                         return Err(format_err!(
                             "Twitter media upload of {} failed: {}",
                             attachment.attachment_url,

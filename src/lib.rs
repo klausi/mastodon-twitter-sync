@@ -206,5 +206,5 @@ fn cache_file(name: &str) -> String {
     if let Ok(cache_dir) = std::env::var("MTS_CACHE_DIR") {
         return format!("{}/{}", cache_dir, name);
     }
-    return name.into();
+    name.into()
 }
