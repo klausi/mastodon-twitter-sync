@@ -18,26 +18,26 @@ Optionally configuration options can be set to delete posts/favourites from your
 
 ## Installation and execution
 
-Unfortunately I'm not able to provide precompiled portable Linux binaries because of different OpenSSL versions in different Linux distributions. Let me know if you have ideas how to solve that!
+There are 3 options how to run mastodon-twitter-sync:
 
-There are 2 options how to run mastodon-twitter-sync:
+1. Recommended: Precompiled executable binaries from the [release page](https://github.com/klausi/mastodon-twitter-sync/releases) (If the binaries do not work on your system you will have to use Docker or compile the program yourself.)
+2. Docker
+3. Compiling yourself (takes a bit of time with the Rust compiler)
 
-* Recommended: Compiling yourself (takes a bit of time)
-* using Docker (large 1 GB Docker image download)
+### Oprion 1: Precompiled binaries (recommended)
 
-### Compiling with cargo (recommended)
-
-This will install Rust and setup API access to Mastodon and Twitter. Follow the text instructions to enter API keys.
+Download the executable archive for your operating system platform from the release page and run it in an directory where the configuration and cache files will be stored.
 
 ```
-curl https://sh.rustup.rs -sSf | sh
-source ~/.cargo/env
-git clone https://github.com/klausi/mastodon-twitter-sync.git
+mkdir mastodon-twitter-sync
 cd mastodon-twitter-sync
-cargo run --release
+tar xzf /path/to/downloaded/mastodon-twitter-sync-x86_64-unknown-linux-gnu.tar.gz
+./mastodon-twitter-sync
 ```
 
-### Installing with Docker
+Follow the text instructions to enter API keys.
+
+### Option 2: Installing with Docker
 
 You need to have Docker installed on your system, then you can use the [published Docker image](https://hub.docker.com/r/klausi/mastodon-twitter-sync).
 
@@ -51,7 +51,23 @@ docker run -it --rm -v "$(pwd)":/data klausi/mastodon-twitter-sync
 
 Follow the text instructions to enter API keys.
 
-Use that Docker command as a replacement for `cargo run --release` in the examples in this README.
+Use that Docker command as a replacement for `./mastodon-twitter-sync` in the examples in this README.
+
+### Option 3: Compiling with cargo
+
+This will install Rust and setup API access to Mastodon and Twitter. Follow the text instructions to enter API keys.
+
+```
+curl https://sh.rustup.rs -sSf | sh
+source ~/.cargo/env
+git clone https://github.com/klausi/mastodon-twitter-sync.git
+cd mastodon-twitter-sync
+cargo run --release
+```
+
+Follow the text instructions to enter API keys.
+
+Use the `cargo run --release --` command as a replacement for `./mastodon-twitter-sync` in the examples in this README.
 
 ## Configuration
 
@@ -98,7 +114,7 @@ sync_hashtag = "#sync"
 
 You can preview what's going to be synced using the `--dry-run` option:
 
-    cargo run --release -- --dry-run
+    ./mastodon-twitter-sync --dry-run
 
 This is running a sync without actually posting or deleting anything.
 
@@ -106,16 +122,16 @@ This is running a sync without actually posting or deleting anything.
 
 If you already have posts in one or both of your accounts and you want to exclude them from being synced you can use `--skip-existing-posts`. This is going to mark all posts as synced without actually posting them.
 
-    cargo run --release -- --skip-existing-posts
+    ./mastodon-twitter-sync --skip-existing-posts
 
 Note that combining `--skip-existing-posts --dry-run` will not do anything. You have to run `--skip-existing-posts` alone to mark all posts as synchronized in the post cache.
 
 ## Periodic execution
 
-Every run of the program only synchronizes the accounts once. Use Cron to run it periodically, recommended every 10 minutes:
+Every run of the program only synchronizes the accounts once. Use Cron to run it periodically, recommended every 10 minutes as in this example:
 
 ```
-*/10 * * * *   cd /home/klausi/workspace/mastodon-twitter-sync && ./target/release/mastodon-twitter-sync
+*/10 * * * *   cd /home/klausi/workspace/mastodon-twitter-sync && ./mastodon-twitter-sync
 ```
 
 Or for the Docker version:
