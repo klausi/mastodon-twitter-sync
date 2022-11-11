@@ -1,8 +1,6 @@
 # This is for an image based on alpine.
 
-FROM rust:1-alpine AS builder
-
-RUN apk add --no-cache musl-dev openssl-dev
+FROM --platform=$BUILDPLATFORM rust:1-alpine AS vendor
 
 ENV USER=root
 WORKDIR /code
@@ -13,8 +11,19 @@ COPY Cargo.lock Cargo.toml /code/
 RUN mkdir -p /code/.cargo
 RUN cargo vendor >> /code/.cargo/config.toml
 
-# Copy the source code and compile
+FROM rust:1-alpine AS builder
+
+RUN apk add --no-cache musl-dev openssl-dev
+
+ENV USER=root
+WORKDIR /code
+
+COPY Cargo.toml /code/Cargo.toml
+COPY Cargo.lock /code/Cargo.lock
 COPY src /code/src
+COPY --from=vendor /code/.cargo /code/.cargo
+COPY --from=vendor /code/vendor /code/vendor
+
 RUN cargo build --release --offline
 
 FROM alpine:latest
