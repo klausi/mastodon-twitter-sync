@@ -31,6 +31,8 @@ pub struct MastodonConfig {
     #[serde(default = "config_none_default")]
     pub sync_hashtag: Option<String>,
     pub app: Data,
+    #[serde(default)] // empty string
+    pub sync_prefix: String,
 }
 
 #[serde_as]
@@ -51,6 +53,8 @@ pub struct TwitterConfig {
     #[serde_as(as = "NoneAsEmptyString")]
     #[serde(default = "config_none_default")]
     pub sync_hashtag: Option<String>,
+    #[serde(default)] // empty string
+    pub sync_prefix: String,
 }
 
 fn config_false_default() -> bool {

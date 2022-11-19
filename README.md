@@ -85,6 +85,8 @@ delete_older_favs = true
 sync_reblogs = true
 # Restrict sync to a hashtag (leave empty to sync all posts)
 sync_hashtag = "#sync"
+# Add the prefix of toots to send  (leave empty to add nothing)
+sync_prefix = "[twitter] "
 
 [mastodon.app]
 base = "https://mastodon.social"
@@ -108,6 +110,8 @@ delete_older_favs = true
 sync_retweets = true
 # Restrict sync to a hashtag (leave empty to sync all posts)
 sync_hashtag = "#sync"
+# Add the prefix of tweets to send (leave empty to add nothing)
+sync_prefix = "[mastodon] "
 ```
 
 ## Preview what's going to be synced

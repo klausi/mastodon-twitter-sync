@@ -51,6 +51,7 @@ pub fn run(args: Args) -> Result<()> {
                     delete_older_favs: false,
                     sync_reblogs: true,
                     sync_hashtag: None,
+                    sync_prefix: Default::default(),
                 },
                 twitter: twitter_config,
             };
