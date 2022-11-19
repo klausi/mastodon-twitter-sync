@@ -30,9 +30,9 @@ pub struct MastodonConfig {
     #[serde_as(as = "NoneAsEmptyString")]
     #[serde(default = "config_none_default")]
     pub sync_hashtag: Option<String>,
-    pub app: Data,
     #[serde(default)] // empty string
     pub sync_prefix: String,
+    pub app: Data,
 }
 
 #[serde_as]
