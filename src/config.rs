@@ -127,6 +127,40 @@ delete_older_statuses = true
 delete_older_favs = true
 sync_reblogs = false
 sync_hashtag = "#test"
+sync_prefix = "[T] "
+[mastodon.app]
+base = "https://mastodon.social"
+client_id = "abcd"
+client_secret = "abcd"
+redirect = "urn:ietf:wg:oauth:2.0:oob"
+token = "1234"
+[twitter]
+consumer_key = "abcd"
+consumer_secret = "abcd"
+access_token = "1234"
+access_token_secret = "1234"
+user_id = 0
+user_name = " "
+delete_older_statuses = true
+delete_older_favs = true
+sync_retweets = false
+sync_hashtag = "#test"
+sync_prefix = "[M] "
+"##;
+        let config: Config = toml::from_str(toml_config).unwrap();
+        toml::to_string(&config).unwrap();
+    }
+
+    // Ensure that serializing/deserializing of the TOML config does not throw
+    // errors.
+    #[test]
+    fn serialize_config_v1_8_0() {
+        let toml_config = r##"
+[mastodon]
+delete_older_statuses = true
+delete_older_favs = true
+sync_reblogs = false
+sync_hashtag = "#test"
 [mastodon.app]
 base = "https://mastodon.social"
 client_id = "abcd"
