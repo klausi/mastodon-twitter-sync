@@ -21,18 +21,25 @@ use tempfile::tempdir;
 use tokio::time::sleep;
 
 /// Send new status with any given replies to Mastodon.
-pub fn post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus, dry_run: bool) -> Result<()> {
+///
+/// The prefix can be an empty string, a.k.a: Add no prefix.
+pub fn post_to_mastodon(
+    mastodon: &Mastodon,
+    toot: &NewStatus,
+    dry_run: bool,
+    prefix: &str,
+) -> Result<()> {
     if let Some(reply_to) = toot.in_reply_to_id {
         println!(
-            "Posting thread reply for {} to Mastodon: {}",
+            "Posting thread reply for {} to Mastodon: {prefix}{}",
             reply_to, toot.text
         );
     } else {
-        println!("Posting to Mastodon: {}", toot.text);
+        println!("Posting to Mastodon: {prefix}{}", toot.text);
     }
     let mut status_id = 0;
     if !dry_run {
-        status_id = send_single_post_to_mastodon(mastodon, toot)?;
+        status_id = send_single_post_to_mastodon(mastodon, toot, prefix)?;
     }
 
     // Recursion does not work well with async functions, so we use iteration
@@ -49,12 +56,12 @@ pub fn post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus, dry_run: bool) ->
         new_reply.in_reply_to_id = Some(parent_id);
 
         println!(
-            "Posting thread reply for {} to Mastodon: {}",
+            "Posting thread reply for {} to Mastodon: {prefix}{}",
             parent_id, reply.text
         );
         let mut parent_status_id = 0;
         if !dry_run {
-            parent_status_id = send_single_post_to_mastodon(mastodon, &new_reply)?;
+            parent_status_id = send_single_post_to_mastodon(mastodon, &new_reply, prefix)?;
         }
         for remaining_reply in &reply.replies {
             replies.push((parent_status_id, remaining_reply));
@@ -65,7 +72,14 @@ pub fn post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus, dry_run: bool) ->
 }
 
 /// Sends the given new status to Mastodon.
-fn send_single_post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus) -> Result<u64> {
+///
+/// The prefix can be an empty string, a.k.a: Add no prefix.
+fn send_single_post_to_mastodon(
+    mastodon: &Mastodon,
+    toot: &NewStatus,
+    prefix: &str,
+) -> Result<u64> {
+    let prefix_text = prefix_message(&toot.text, prefix);
     let mut media_ids = Vec::new();
     // Temporary directory where we will download any file attachments to.
     let temp_dir = tempdir()?;
@@ -104,7 +118,7 @@ fn send_single_post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus) -> Result
     }
 
     let mut status_builder = StatusBuilder::new();
-    status_builder.status(&toot.text);
+    status_builder.status(&prefix_text);
     status_builder.media_ids(media_ids);
     if let Some(parent_id) = toot.in_reply_to_id {
         status_builder.in_reply_to(parent_id.to_string());
@@ -122,18 +136,25 @@ fn send_single_post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus) -> Result
 
 /// Send a new status update to Twitter, including thread replies and
 /// attachments.
-pub async fn post_to_twitter(token: &Token, tweet: &NewStatus, dry_run: bool) -> Result<()> {
+///
+/// The prefix can be an empty string, a.k.a: Add no prefix.
+pub async fn post_to_twitter(
+    token: &Token,
+    tweet: &NewStatus,
+    dry_run: bool,
+    prefix: &str,
+) -> Result<()> {
     if let Some(reply_to) = tweet.in_reply_to_id {
         println!(
-            "Posting thread reply for {} to Twitter: {}",
+            "Posting thread reply for {} to Twitter: {prefix}{}",
             reply_to, tweet.text
         );
     } else {
-        println!("Posting to Twitter: {}", tweet.text);
+        println!("Posting to Twitter: {prefix}{}", tweet.text);
     }
     let mut status_id = 0;
     if !dry_run {
-        status_id = send_single_post_to_twitter(token, tweet).await?;
+        status_id = send_single_post_to_twitter(token, tweet, prefix).await?;
     }
 
     // Recursion does not work well with async functions, so we use iteration
@@ -150,12 +171,12 @@ pub async fn post_to_twitter(token: &Token, tweet: &NewStatus, dry_run: bool) ->
         new_reply.in_reply_to_id = Some(parent_id);
 
         println!(
-            "Posting thread reply for {} to Twitter: {}",
+            "Posting thread reply for {} to Twitter: {prefix}{}",
             parent_id, reply.text
         );
         let mut parent_status_id = 0;
         if !dry_run {
-            parent_status_id = send_single_post_to_twitter(token, &new_reply).await?;
+            parent_status_id = send_single_post_to_twitter(token, &new_reply, prefix).await?;
         }
         for remaining_reply in &reply.replies {
             replies.push((parent_status_id, remaining_reply));
@@ -166,8 +187,15 @@ pub async fn post_to_twitter(token: &Token, tweet: &NewStatus, dry_run: bool) ->
 }
 
 /// Sends the given new status to Twitter.
-async fn send_single_post_to_twitter(token: &Token, tweet: &NewStatus) -> Result<u64> {
-    let mut draft = DraftTweet::new(tweet.text.clone());
+///
+/// The prefix can be an empty string, a.k.a: Add no prefix.
+async fn send_single_post_to_twitter(
+    token: &Token,
+    tweet: &NewStatus,
+    prefix: &str,
+) -> Result<u64> {
+    let prefix_text = prefix_message(&tweet.text, prefix);
+    let mut draft = DraftTweet::new(prefix_text);
     'attachments: for attachment in &tweet.attachments {
         let response = reqwest::get(&attachment.attachment_url).await?;
         let media_type = response
@@ -226,4 +254,15 @@ async fn send_single_post_to_twitter(token: &Token, tweet: &NewStatus) -> Result
     };
 
     Ok(created_tweet.id)
+}
+
+/// Add prefix to the specified string.
+///
+/// The prefix can be an empty string, means
+/// that we won't add any prefix.
+fn prefix_message(message: &str, prefix: &str) -> String {
+    let mut m = String::with_capacity(message.len() + prefix.len());
+    m.push_str(prefix);
+    m.push_str(message);
+    m
 }
