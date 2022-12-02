@@ -6,11 +6,11 @@ This tool synchronizes posts from [Mastodon](https://joinmastodon.org/) to [Twit
 
 ## Synchronization Features
 
-* Your status update on Twitter will be posted automatically to Mastodon
-* Your Retweet on Twitter will automatically be posted to Mastodon with a "RT username:" prefix
-* Your status update on Mastodon will be posted automatically to Twitter
-* Your boost on Mastodon will be posted automatically to Twitter with a "RT username:" prefix
-* Your own threads (your replies to your own posts) will be synced both ways
+- Your status update on Twitter will be posted automatically to Mastodon
+- Your Retweet on Twitter will automatically be posted to Mastodon with a "RT username:" prefix
+- Your status update on Mastodon will be posted automatically to Twitter
+- Your boost on Mastodon will be posted automatically to Twitter with a "RT username:" prefix
+- Your own threads (your replies to your own posts) will be synced both ways
 
 ## Old data deletion feature for better privacy
 
@@ -24,7 +24,7 @@ There are 3 options how to run mastodon-twitter-sync:
 2. Docker
 3. Compiling yourself (takes a bit of time with the Rust compiler)
 
-### Oprion 1: Precompiled binaries (recommended)
+### Option 1: Precompiled binaries (recommended)
 
 Download the executable archive for your operating system platform from the release page and run it in an directory where the configuration and cache files will be stored.
 
