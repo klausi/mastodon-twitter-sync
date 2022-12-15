@@ -134,7 +134,7 @@ pub fn run(args: Args) -> Result<()> {
     let mut cache_changed = false;
     posts = filter_posted_before(posts, &post_cache)?;
 
-    for toot in posts.toots {
+    for toot in posts.toots.into_iter().rev() {
         if !args.skip_existing_posts {
             if let Err(e) = post_to_mastodon(&mastodon, &toot, args.dry_run) {
                 println!("Error posting toot to Mastodon: {:#?}", e);
@@ -149,7 +149,7 @@ pub fn run(args: Args) -> Result<()> {
         }
     }
 
-    for tweet in posts.tweets {
+    for tweet in posts.tweets.into_iter().rev() {
         if !args.skip_existing_posts {
             if let Err(e) = rt.block_on(post_to_twitter(&token, &tweet, args.dry_run)) {
                 println!("Error posting tweet to Twitter: {:#?}", e);
