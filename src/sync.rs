@@ -377,7 +377,7 @@ pub fn filter_posted_before(
     };
     for tweet in posts.tweets {
         if post_cache.contains(&tweet.text) {
-            println!(
+            eprintln!(
                 "Error: preventing double posting to Twitter: {}",
                 tweet.text
             );
@@ -387,7 +387,7 @@ pub fn filter_posted_before(
     }
     for toot in posts.toots {
         if post_cache.contains(&toot.text) {
-            println!(
+            eprintln!(
                 "Error: preventing double posting to Mastodon: {}",
                 toot.text
             );
