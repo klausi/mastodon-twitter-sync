@@ -16,6 +16,14 @@ pub struct StatusUpdates {
     pub toots: Vec<NewStatus>,
 }
 
+impl StatusUpdates {
+    /// Reverses the order of statuses in place.
+    pub fn reverse_order(&mut self) {
+        self.tweets.reverse();
+        self.toots.reverse();
+    }
+}
+
 // A new status for posting. Optionally has links to media (images) that should
 // be attached.
 #[derive(Debug, Clone)]
@@ -151,6 +159,7 @@ pub fn determine_posts(
 
     determine_thread_replies(mastodon_statuses, twitter_statuses, options, &mut updates);
 
+    updates.reverse_order();
     updates
 }
 
@@ -1265,6 +1274,42 @@ QT test123: Original text"
         let posts = determine_posts(&toots, &Vec::new(), &DEFAULT_SYNC_OPTIONS);
         assert!(posts.toots.is_empty());
         assert!(posts.tweets.is_empty());
+    }
+
+    // Test that the post order is correct.
+    #[test]
+    fn post_order() {
+        let mut toot1 = get_mastodon_status();
+        toot1.content = "toot #1".to_string();
+        let mut toot2 = get_mastodon_status();
+        toot2.content = "toot #2".to_string();
+
+        let mut tweet1 = get_twitter_status();
+        tweet1.text = "tweet #1".to_string();
+        let mut tweet2 = get_twitter_status();
+        tweet2.text = "tweet #2".to_string();
+
+        let posts = determine_posts(
+            &vec![toot1, toot2],
+            &vec![tweet1, tweet2],
+            &DEFAULT_SYNC_OPTIONS,
+        );
+        assert_eq!(
+            vec!["tweet #2", "tweet #1"],
+            posts
+                .toots
+                .iter()
+                .map(|v| v.text.as_str())
+                .collect::<Vec<&str>>()
+        );
+        assert_eq!(
+            vec!["toot #2", "toot #1"],
+            posts
+                .tweets
+                .iter()
+                .map(|v| v.text.as_str())
+                .collect::<Vec<&str>>()
+        );
     }
 
     pub fn get_mastodon_status() -> Status {
