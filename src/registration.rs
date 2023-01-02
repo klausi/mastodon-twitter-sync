@@ -56,6 +56,7 @@ pub async fn twitter_register() -> Result<TwitterConfig> {
             delete_older_favs: false,
             sync_retweets: true,
             sync_hashtag: None,
+            sync_prefix: Default::default(),
         }),
         _ => unreachable!(),
     }

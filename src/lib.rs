@@ -51,6 +51,7 @@ pub fn run(args: Args) -> Result<()> {
                     delete_older_favs: false,
                     sync_reblogs: true,
                     sync_hashtag: None,
+                    sync_prefix: Default::default(),
                 },
                 twitter: twitter_config,
             };
@@ -136,7 +137,9 @@ pub fn run(args: Args) -> Result<()> {
 
     for toot in posts.toots {
         if !args.skip_existing_posts {
-            if let Err(e) = post_to_mastodon(&mastodon, &toot, args.dry_run) {
+            if let Err(e) =
+                post_to_mastodon(&mastodon, &toot, args.dry_run, &config.mastodon.sync_prefix)
+            {
                 println!("Error posting toot to Mastodon: {:#?}", e);
                 process::exit(5);
             }
@@ -151,7 +154,12 @@ pub fn run(args: Args) -> Result<()> {
 
     for tweet in posts.tweets {
         if !args.skip_existing_posts {
-            if let Err(e) = rt.block_on(post_to_twitter(&token, &tweet, args.dry_run)) {
+            if let Err(e) = rt.block_on(post_to_twitter(
+                &token,
+                &tweet,
+                args.dry_run,
+                &config.twitter.sync_prefix,
+            )) {
                 println!("Error posting tweet to Twitter: {:#?}", e);
                 process::exit(6);
             }
