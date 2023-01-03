@@ -26,7 +26,7 @@ pub fn mastodon_delete_older_statuses(
     let mut remove_dates = Vec::new();
     let three_months_ago = Utc::now() - Duration::days(90);
     for (date, toot_id) in dates.range(..three_months_ago) {
-        println!("Deleting toot {} from {}", toot_id, date);
+        println!("Deleting toot {toot_id} from {date}");
         // Do nothing on a dry run, just print what would be done.
         if dry_run {
             continue;
@@ -35,7 +35,7 @@ pub fn mastodon_delete_older_statuses(
         remove_dates.push(date);
         // The status could have been deleted already by the user, ignore API
         // errors in that case.
-        if let Err(error) = mastodon.delete_status(&format!("{}", toot_id)) {
+        if let Err(error) = mastodon.delete_status(&format!("{toot_id}")) {
             match error {
                 ElefrenError::Api(_) => {}
                 _ => return Err(error.into()),
@@ -97,7 +97,7 @@ pub async fn twitter_delete_older_statuses(
     let mut remove_dates = Vec::new();
     let three_months_ago = Utc::now() - Duration::days(90);
     for (date, tweet_id) in dates.range(..three_months_ago) {
-        println!("Deleting tweet {} from {}", tweet_id, date);
+        println!("Deleting tweet {tweet_id} from {date}");
         // Do nothing on a dry run, just print what would be done.
         if dry_run {
             continue;

@@ -311,10 +311,9 @@ fn tweet_get_text_with_quote(tweet: &Tweet) -> String {
             }
 
             format!(
-                "{}
+                "{tweet_text}
 
-QT {}: {}",
-                tweet_text, screen_name, original_text
+QT {screen_name}: {original_text}"
             )
         }
     }

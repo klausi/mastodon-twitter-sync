@@ -62,7 +62,7 @@ pub async fn twitter_register() -> Result<TwitterConfig> {
 }
 
 fn console_input(prompt: &str) -> Result<String> {
-    println!("{}: ", prompt);
+    println!("{prompt}: ");
     let mut line = String::new();
     let _ = io::stdin().read_line(&mut line)?;
     Ok(line.trim().to_string())
