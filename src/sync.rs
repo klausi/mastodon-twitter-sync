@@ -54,6 +54,17 @@ pub struct SyncOptions {
     pub sync_hashtag_mastodon: Option<String>,
 }
 
+/// This is the main synchronization function that can be tested without
+/// external API calls.
+///
+/// The ordering of the statuses in both list parameters is expected to be from
+/// newest to oldest. That is also the ordering returned by the Twitter and
+/// Mastodon APIs for their timelines, they start with newest posts first.
+///
+/// The returned data structure contains new posts that are not synchronized yet
+/// and should be posted on both Twitter and Mastodon. They are ordered in
+/// reverse so that older statuses are posted first if there are multiple
+/// statuses to synchronize.
 pub fn determine_posts(
     mastodon_statuses: &[Status],
     twitter_statuses: &[Tweet],
@@ -159,6 +170,8 @@ pub fn determine_posts(
 
     determine_thread_replies(mastodon_statuses, twitter_statuses, options, &mut updates);
 
+    // Older posts should come first to preserve the ordering of posts to
+    // synchronize.
     updates.reverse_order();
     updates
 }
