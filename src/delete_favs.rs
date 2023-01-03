@@ -21,7 +21,7 @@ pub fn mastodon_delete_older_favs(mastodon: &Mastodon, dry_run: bool) -> Result<
     let mut remove_dates = Vec::new();
     let three_months_ago = Utc::now() - Duration::days(90);
     for (date, toot_id) in dates.range(..three_months_ago) {
-        println!("Deleting Mastodon fav {} from {}", toot_id, date);
+        println!("Deleting Mastodon fav {toot_id} from {date}");
         // Do nothing on a dry run, just print what would be done.
         if dry_run {
             continue;
@@ -30,7 +30,7 @@ pub fn mastodon_delete_older_favs(mastodon: &Mastodon, dry_run: bool) -> Result<
         remove_dates.push(date);
         // The status could have been deleted already by the user, ignore API
         // errors in that case.
-        if let Err(error) = mastodon.unfavourite(&format!("{}", toot_id)) {
+        if let Err(error) = mastodon.unfavourite(&format!("{toot_id}")) {
             match error {
                 ElefrenError::Api(_) => {}
                 _ => return Err(error.into()),
@@ -90,7 +90,7 @@ pub async fn twitter_delete_older_favs(
     let mut remove_dates = Vec::new();
     let three_months_ago = Utc::now() - Duration::days(90);
     for (delete_count, (date, tweet_id)) in dates.range(..three_months_ago).enumerate() {
-        println!("Deleting Twitter fav {} from {}", tweet_id, date);
+        println!("Deleting Twitter fav {tweet_id} from {date}");
         // Do nothing on a dry run, just print what would be done.
         if dry_run {
             continue;

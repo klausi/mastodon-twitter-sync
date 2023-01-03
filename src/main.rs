@@ -7,9 +7,9 @@ fn main() {
     let args = Args::parse();
 
     if let Err(err) = run(args) {
-        eprintln!("Error: {}", err);
+        eprintln!("Error: {err}");
         for cause in err.chain().skip(1) {
-            eprintln!("Because: {}", cause);
+            eprintln!("Because: {cause}");
         }
         std::process::exit(1);
     }
