@@ -12,7 +12,6 @@ anyhow = ">=1"
 # See https://github.com/time-rs/time/issues/293
 chrono = { version = ">=0.4.23", default-features = false, features = ["std"] }
 clap = { version = ">=3.2.22", features = ["derive"] }
-egg-mode = { version = ">=0.16", default-features = false, features = ["rustls_webpki"] }
 egg-mode-text = ">=1.15.0"
 env_logger = ">=0.7.1"
 html-escape = ">=0.2.11"
@@ -38,6 +37,13 @@ git = "https://github.com/klausi/elefren"
 rev = "c41ac8160ddb8f3fbc73e002bff52e953150d3a0"
 default-features = false
 features = ["rustls-tls"]
+
+# Dev version of egg-mode, see https://github.com/egg-mode-rs/egg-mode/pull/131
+[dependencies.egg-mode]
+git = "https://github.com/klausi/egg-mode"
+rev = "5f46180f2e647533fbec0ec503854fa53375f055"
+default-features = false
+features = ["rustls_webpki"]
 
 [profile.release]
 # Enabled to have a smaller binary size.
