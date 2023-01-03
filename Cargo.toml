@@ -7,7 +7,10 @@ edition = "2021"
 
 [dependencies]
 anyhow = ">=1"
-chrono = ">=0.4.0"
+# Switching off default features removes a dependency to the "time" crate that
+# contains a potential security issue.
+# See https://github.com/time-rs/time/issues/293
+chrono = { version = ">=0.4.23", default-features = false, features = ["std"] }
 clap = { version = ">=3.2.22", features = ["derive"] }
 egg-mode = { version = ">=0.16", default-features = false, features = ["rustls_webpki"] }
 egg-mode-text = ">=1.15.0"
@@ -32,7 +35,7 @@ voca_rs = ">=1.14.0"
 # use this mirror.
 [dependencies.elefren]
 git = "https://github.com/klausi/elefren"
-rev = "60759fce4725bb9d78ee5382e780b66796ad07fa"
+rev = "c41ac8160ddb8f3fbc73e002bff52e953150d3a0"
 default-features = false
 features = ["rustls-tls"]
 
