@@ -139,3 +139,5 @@ Or for the Docker version:
 ```
 */10 * * * *   docker run -it --rm -v /home/klausi/workspace/mastodon-twitter-sync:/data klausi/mastodon-twitter-sync
 ```
+
+You can also use Github Actions for free to perform the periodic execution, the setup is explained in the [Periodic execution with Github Actions Cron](https://github.com/klausi/mastodon-twitter-sync/wiki/Periodic-execution-with-Github-Actions-Cron) wiki article.
