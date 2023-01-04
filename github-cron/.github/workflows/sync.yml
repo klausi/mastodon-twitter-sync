@@ -1,0 +1,55 @@
+on:
+  schedule:
+    # Trigger the sync every 10 minutes.
+    - cron: '*/10 * * * *'
+  # Allow triggering the sync manually.
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    environment: Cron
+    steps:
+      - name: Check out the repo itself
+        uses: actions/checkout@v3
+        with:
+          path: config
+
+      - name: Restore sync cache folder
+        uses: actions/cache@v3
+        with:
+          path: cache
+          # We don't really need a cache key as we never want to throw the cache
+          # away. We need a unique number per run so that the cache always gets
+          # saved. Then the next run will fall back to the restore-key and
+          # retrieve the newest cache entry. This is not ideal as it fills up
+          # disk space at Github, it would be nice to have a cache cleanup
+          # action that throws out old entries.
+          key: cache-${{ github.run_number }}
+          restore-keys: cache
+
+      - name: Check if cache files are there
+        run: mkdir -p cache && ls -la cache
+
+      - name: Decrypt the configuration file
+        run: cd config && gpg --batch --yes --decrypt --passphrase="$GPG_PASSPHRASE" --decrypt mastodon-twitter-sync.toml.gpg > mastodon-twitter-sync.toml
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Download latest mastodon-twitter-sync executable
+        uses: robinraju/release-downloader@v1.6
+        with:
+          repository: "klausi/mastodon-twitter-sync"
+          latest: true
+          fileName: "mastodon-twitter-sync-x86_64-unknown-linux-gnu.tar.gz"
+
+      - name: Extract executable
+        run: tar xzf mastodon-twitter-sync-x86_64-unknown-linux-gnu.tar.gz
+
+      - name: Execute sync
+        run: cd cache && ../mastodon-twitter-sync --config=../config/mastodon-twitter-sync.toml
+
+      - name: Delete old Github Actions cache entries
+        run: cd config && ./cache-cleanup.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
