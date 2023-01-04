@@ -117,7 +117,7 @@ pub fn determine_thread_replies(
                     text: post,
                     attachments: toot_get_attachments(toot),
                     in_reply_to_id: in_reply_to_id.parse::<u64>().unwrap_or_else(|_| {
-                        panic!("Mastodon reply ID is not u64: {}", in_reply_to_id)
+                        panic!("Mastodon reply ID is not u64: {in_reply_to_id}")
                     }),
                 },
             );

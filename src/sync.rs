@@ -16,6 +16,14 @@ pub struct StatusUpdates {
     pub toots: Vec<NewStatus>,
 }
 
+impl StatusUpdates {
+    /// Reverses the order of statuses in place.
+    pub fn reverse_order(&mut self) {
+        self.tweets.reverse();
+        self.toots.reverse();
+    }
+}
+
 // A new status for posting. Optionally has links to media (images) that should
 // be attached.
 #[derive(Debug, Clone)]
@@ -46,6 +54,17 @@ pub struct SyncOptions {
     pub sync_hashtag_mastodon: Option<String>,
 }
 
+/// This is the main synchronization function that can be tested without
+/// external API calls.
+///
+/// The ordering of the statuses in both list parameters is expected to be from
+/// newest to oldest. That is also the ordering returned by the Twitter and
+/// Mastodon APIs for their timelines, they start with newest posts first.
+///
+/// The returned data structure contains new posts that are not synchronized yet
+/// and should be posted on both Twitter and Mastodon. They are ordered in
+/// reverse so that older statuses are posted first if there are multiple
+/// statuses to synchronize.
 pub fn determine_posts(
     mastodon_statuses: &[Status],
     twitter_statuses: &[Tweet],
@@ -151,6 +170,9 @@ pub fn determine_posts(
 
     determine_thread_replies(mastodon_statuses, twitter_statuses, options, &mut updates);
 
+    // Older posts should come first to preserve the ordering of posts to
+    // synchronize.
+    updates.reverse_order();
     updates
 }
 
@@ -289,10 +311,9 @@ fn tweet_get_text_with_quote(tweet: &Tweet) -> String {
             }
 
             format!(
-                "{}
+                "{tweet_text}
 
-QT {}: {}",
-                tweet_text, screen_name, original_text
+QT {screen_name}: {original_text}"
             )
         }
     }
@@ -377,7 +398,7 @@ pub fn filter_posted_before(
     };
     for tweet in posts.tweets {
         if post_cache.contains(&tweet.text) {
-            println!(
+            eprintln!(
                 "Error: preventing double posting to Twitter: {}",
                 tweet.text
             );
@@ -387,7 +408,7 @@ pub fn filter_posted_before(
     }
     for toot in posts.toots {
         if post_cache.contains(&toot.text) {
-            println!(
+            eprintln!(
                 "Error: preventing double posting to Mastodon: {}",
                 toot.text
             );
@@ -1265,6 +1286,42 @@ QT test123: Original text"
         let posts = determine_posts(&toots, &Vec::new(), &DEFAULT_SYNC_OPTIONS);
         assert!(posts.toots.is_empty());
         assert!(posts.tweets.is_empty());
+    }
+
+    // Test that the post order is correct.
+    #[test]
+    fn post_order() {
+        let mut toot1 = get_mastodon_status();
+        toot1.content = "toot #1".to_string();
+        let mut toot2 = get_mastodon_status();
+        toot2.content = "toot #2".to_string();
+
+        let mut tweet1 = get_twitter_status();
+        tweet1.text = "tweet #1".to_string();
+        let mut tweet2 = get_twitter_status();
+        tweet2.text = "tweet #2".to_string();
+
+        let posts = determine_posts(
+            &vec![toot1, toot2],
+            &vec![tweet1, tweet2],
+            &DEFAULT_SYNC_OPTIONS,
+        );
+        assert_eq!(
+            vec!["tweet #2", "tweet #1"],
+            posts
+                .toots
+                .iter()
+                .map(|v| v.text.as_str())
+                .collect::<Vec<&str>>()
+        );
+        assert_eq!(
+            vec!["toot #2", "toot #1"],
+            posts
+                .tweets
+                .iter()
+                .map(|v| v.text.as_str())
+                .collect::<Vec<&str>>()
+        );
     }
 
     pub fn get_mastodon_status() -> Status {

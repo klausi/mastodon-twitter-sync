@@ -69,7 +69,7 @@ pub fn run(args: Args) -> Result<()> {
     let account = match mastodon.verify_credentials() {
         Ok(account) => account,
         Err(e) => {
-            println!("Error connecting to Mastodon: {:#?}", e);
+            eprintln!("Error connecting to Mastodon: {e:#?}");
             process::exit(1);
         }
     };
@@ -77,7 +77,7 @@ pub fn run(args: Args) -> Result<()> {
     let mastodon_statuses = match mastodon.statuses(&account.id, StatusesRequest::new().limit(50)) {
         Ok(statuses) => statuses.initial_items,
         Err(e) => {
-            println!("Error fetching toots from Mastodon: {:#?}", e);
+            eprintln!("Error fetching toots from Mastodon: {e:#?}");
             process::exit(2);
         }
     };
@@ -100,7 +100,7 @@ pub fn run(args: Args) -> Result<()> {
     let (timeline, first_tweets) = match rt.block_on(timeline.start()) {
         Ok(tweets) => tweets,
         Err(e) => {
-            println!("Error fetching tweets from Twitter: {:#?}", e);
+            eprintln!("Error fetching tweets from Twitter: {e:#?}");
             process::exit(3);
         }
     };
@@ -111,7 +111,7 @@ pub fn run(args: Args) -> Result<()> {
         let (_, next_tweets) = match rt.block_on(timeline.older(None)) {
             Ok(tweets) => tweets,
             Err(e) => {
-                println!("Error fetching older tweets from Twitter: {:#?}", e);
+                eprintln!("Error fetching older tweets from Twitter: {e:#?}");
                 process::exit(4);
             }
         };
@@ -137,7 +137,7 @@ pub fn run(args: Args) -> Result<()> {
     for toot in posts.toots {
         if !args.skip_existing_posts {
             if let Err(e) = post_to_mastodon(&mastodon, &toot, args.dry_run) {
-                println!("Error posting toot to Mastodon: {:#?}", e);
+                eprintln!("Error posting toot to Mastodon: {e:#?}");
                 process::exit(5);
             }
         }
@@ -152,7 +152,7 @@ pub fn run(args: Args) -> Result<()> {
     for tweet in posts.tweets {
         if !args.skip_existing_posts {
             if let Err(e) = rt.block_on(post_to_twitter(&token, &tweet, args.dry_run)) {
-                println!("Error posting tweet to Twitter: {:#?}", e);
+                eprintln!("Error posting tweet to Twitter: {e:#?}");
                 process::exit(6);
             }
         }
@@ -204,7 +204,7 @@ pub fn run(args: Args) -> Result<()> {
 /// Returns the full path for a cache file name.
 fn cache_file(name: &str) -> String {
     if let Ok(cache_dir) = std::env::var("MTS_CACHE_DIR") {
-        return format!("{}/{}", cache_dir, name);
+        return format!("{cache_dir}/{name}");
     }
     name.into()
 }
