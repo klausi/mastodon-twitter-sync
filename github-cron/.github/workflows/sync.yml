@@ -22,9 +22,10 @@ jobs:
           # We don't really need a cache key as we never want to throw the cache
           # away. We need a unique number per run so that the cache always gets
           # saved. Then the next run will fall back to the restore-key and
-          # retrieve the newest cache entry. This is not ideal as it fills up
-          # disk space at Github, it would be nice to have a cache cleanup
-          # action that throws out old entries.
+          # retrieve the newest cache entry. At the end of the workflow we
+          # clean up older cache entries over the Github API to free up space.
+          # This is a hacky way to use the Github cache as persistent file
+          # system :-)
           key: cache-${{ github.run_number }}
           restore-keys: cache
 
@@ -32,7 +33,7 @@ jobs:
         run: mkdir -p cache && ls -la cache
 
       - name: Decrypt the configuration file
-        run: cd config && gpg --batch --yes --decrypt --passphrase="$GPG_PASSPHRASE" --decrypt mastodon-twitter-sync.toml.gpg > mastodon-twitter-sync.toml
+        run: cd config && gpg --batch --yes --decrypt --passphrase="$GPG_PASSPHRASE" mastodon-twitter-sync.toml.gpg > mastodon-twitter-sync.toml
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
