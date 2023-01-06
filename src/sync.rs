@@ -510,10 +510,30 @@ pub fn toot_get_attachments(toot: &Status) -> Vec<NewMedia> {
     for attachment in attachments {
         links.push(NewMedia {
             attachment_url: attachment.url.clone(),
-            alt_text: attachment.description.clone(),
+            // Twitter only allows a max length of 1,000 characters for alt
+            // text, so we need to cut it off here.
+            alt_text: truncate_option_string(attachment.description.clone(), 1_000),
         });
     }
     links
+}
+
+/// Truncates a given string to a maximum number of characters.
+///
+/// I could not find a Rust core function that does this? We don't care about
+/// graphemes, please just cut off characters at a certain length. Copied from
+/// https://stackoverflow.com/a/38461750/2000435
+///
+/// No, I will not install the substring crate just to get a substring, are you
+/// kidding me????
+fn truncate_option_string(stringy: Option<String>, max_chars: usize) -> Option<String> {
+    match stringy {
+        Some(string) => match string.char_indices().nth(max_chars) {
+            None => Some(string),
+            Some((idx, _)) => Some(string[..idx].to_string()),
+        },
+        None => None,
+    }
 }
 
 #[cfg(test)]
@@ -1322,6 +1342,18 @@ QT test123: Original text"
                 .map(|v| v.text.as_str())
                 .collect::<Vec<&str>>()
         );
+    }
+
+    // Test that long image alt text on Mastodon is shortened to the Twitter
+    // 1000 character limit.
+    #[test]
+    fn tweet_alt_text_length() {
+        let mut toot = get_mastodon_status_media();
+        toot.media_attachments[0].description = Some("a".repeat(1_001));
+        let posts = determine_posts(&vec![toot], &Vec::new(), &DEFAULT_SYNC_OPTIONS);
+
+        let tweet = &posts.tweets[0];
+        assert_eq!(tweet.attachments[0].alt_text, Some("a".repeat(1_000)));
     }
 
     pub fn get_mastodon_status() -> Status {
