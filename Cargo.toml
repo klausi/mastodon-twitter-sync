@@ -1,6 +1,6 @@
 [package]
 name = "mastodon-twitter-sync"
-version = "1.9.0"
+version = "1.9.1"
 authors = ["Klaus Purer <klaus.purer@protonmail.ch>"]
 description = "Synchronizes posts from Mastodon to Twitter and back."
 edition = "2021"
