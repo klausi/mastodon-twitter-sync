@@ -82,9 +82,6 @@ pub fn determine_thread_replies(
                 continue;
             }
 
-            let fulltext = mastodon_toot_get_text(toot);
-            let post = tweet_shorten(&fulltext, &toot.url);
-
             for tweet in twitter_statuses {
                 // If the toot already exists we can stop here and know that we are
                 // synced.
@@ -92,6 +89,8 @@ pub fn determine_thread_replies(
                     break 'toots;
                 }
             }
+
+            let fulltext = mastodon_toot_get_text(toot);
 
             // The toot is not on Twitter yet, check if we should post it.
             // Check if hashtag filtering is enabled and if the tweet matches.
@@ -106,6 +105,8 @@ pub fn determine_thread_replies(
                 .in_reply_to_id
                 .as_ref()
                 .unwrap_or_else(|| panic!("Mastodon reply ID missing on status: {}", toot.id));
+            let post = tweet_shorten(&fulltext, &toot.url);
+
             // Insert this reply in the beginning to reverse order.
             mastodon_replies.insert(
                 0,
@@ -543,5 +544,28 @@ mod tests {
 
         assert!(posts.toots.is_empty());
         assert!(posts.tweets.is_empty());
+    }
+
+    // Tests that mentioned Mastodon usernames are escaped when syncing.
+    #[test]
+    fn username_escaped() {
+        let mut original_toot = get_mastodon_status();
+        original_toot.content = "Original".to_string();
+        let mut reply_toot = get_mastodon_status();
+        reply_toot.content = "<p>Thanks <span class=\"h-card\"><a href=\"https://example.com/@example\" class=\"u-url mention\">@<span>example</span></a></span> for the inspiration 😃</p>".to_string();
+        reply_toot.in_reply_to_account_id = Some(original_toot.account.id.clone());
+        reply_toot.in_reply_to_id = Some(original_toot.id.clone());
+
+        let tweets = Vec::new();
+        let toots = vec![reply_toot, original_toot];
+        let posts = determine_posts(&toots, &tweets, &DEFAULT_SYNC_OPTIONS);
+
+        assert_eq!(posts.tweets.len(), 1);
+        let sync_tweet = &posts.tweets[0];
+        assert_eq!(sync_tweet.text, "Original");
+        assert_eq!(
+            sync_tweet.replies[0].text,
+            "Thanks \\@example for the inspiration 😃"
+        );
     }
 }

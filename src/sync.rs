@@ -373,10 +373,11 @@ pub fn mastodon_toot_get_text(toot: &Status) -> String {
     replaced = replaced.replace("<p>", "");
     replaced = replaced.replace("</p>", "");
 
+    replaced = voca_rs::strip::strip_tags(&replaced);
+
     // Escape direct user mentions with \@.
     replaced = replaced.replace(" @", " \\@");
 
-    replaced = voca_rs::strip::strip_tags(&replaced);
     html_escape::decode_html_entities(&replaced).to_string()
 }
 
@@ -737,7 +738,7 @@ UNLISTED 🔓 ✅ Tagged people
     #[test]
     fn mention_escaped() {
         let mut status = get_mastodon_status();
-        status.content = "I will mention @klausi here".to_string();
+        status.content = "I will mention <span class=\"h-card\"><a href=\"https://example.com/@klausi\" class=\"u-url mention\">@<span>klausi</span></a></span> here".to_string();
         let mut tweet = get_twitter_status();
         tweet.text = "I will mention \\@klausi here".to_string();
         assert!(toot_and_tweet_are_equal(&status, &tweet));
