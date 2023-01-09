@@ -69,6 +69,25 @@ Follow the text instructions to enter API keys.
 
 Use the `cargo run --release --` command as a replacement for `./mastodon-twitter-sync` in the examples in this README.
 
+### Option 4: Distro packages
+
+<details>
+  <summary>Packaging status</summary>
+
+[![Packaging status](https://repology.org/badge/vertical-allrepos/mastodon-twitter-sync.svg)](https://repology.org/project/mastodon-twitter-sync/versions)
+
+</details>
+
+If your distribution has packaged `mastodon-twitter-sync`, you can use that package for the installation.
+
+#### Arch Linux
+
+You can use [pacman](https://wiki.archlinux.org/title/Pacman) to install from the [community repository](https://archlinux.org/packages/community/x86_64/mastodon-twitter-sync/):
+
+```
+pacman -S mastodon-twitter-sync
+```
+
 ## Configuration
 
 All configuration options are created in a `mastodon-twitter-sync.toml` file in the directory where you executed the program.
