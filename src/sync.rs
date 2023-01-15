@@ -215,6 +215,12 @@ fn unify_post_content(content: String) -> String {
     // those randomly.
     result = result.replace("http://", "");
     result = result.replace("https://", "");
+
+    // Support for old posts that started with "RT @\username:", we consider
+    // them equal to "RT username:".
+    if result.starts_with("rt @\\") {
+        result = result.replacen("rt @\\", "rt ", 1);
+    }
     // Support for old posts that started with "RT @username:", we consider them
     // equal to "RT username:".
     if result.starts_with("rt @") {
@@ -224,7 +230,8 @@ fn unify_post_content(content: String) -> String {
         result = result.replacen("rt \\@", "rt ", 1);
     }
     // Escape direct user mentions with \@.
-    result.replace(" @", " \\@")
+    result = result.replace(" \\@", " @");
+    result.replace(" @\\", " @")
 }
 
 // Replace t.co URLs and HTML entity decode &amp;.
@@ -264,8 +271,8 @@ pub fn tweet_unshorten_decode(tweet: &Tweet) -> String {
         }
     }
 
-    // Escape direct user mentions with \@.
-    tweet.text = tweet.text.replace(" @", " \\@");
+    // Escape direct user mentions with @\.
+    tweet.text = tweet.text.replace(" @", " @\\").replace(" @\\\\", " @\\");
 
     // Twitterposts have HTML entities such as &amp;, we need to decode them.
     let decoded = html_escape::decode_html_entities(&tweet.text);
@@ -375,8 +382,8 @@ pub fn mastodon_toot_get_text(toot: &Status) -> String {
 
     replaced = voca_rs::strip::strip_tags(&replaced);
 
-    // Escape direct user mentions with \@.
-    replaced = replaced.replace(" @", " \\@");
+    // Escape direct user mentions with @\.
+    replaced = replaced.replace(" @", " @\\").replace(" @\\\\", " @\\");
 
     html_escape::decode_html_entities(&replaced).to_string()
 }
@@ -740,21 +747,47 @@ UNLISTED 🔓 ✅ Tagged people
         let mut status = get_mastodon_status();
         status.content = "I will mention <span class=\"h-card\"><a href=\"https://example.com/@klausi\" class=\"u-url mention\">@<span>klausi</span></a></span> here".to_string();
         let mut tweet = get_twitter_status();
-        tweet.text = "I will mention \\@klausi here".to_string();
+        tweet.text = "I will mention @\\klausi here".to_string();
         assert!(toot_and_tweet_are_equal(&status, &tweet));
 
         let tweets = Vec::new();
         let statuses = vec![status];
         let posts = determine_posts(&statuses, &tweets, &DEFAULT_SYNC_OPTIONS);
         assert!(posts.toots.is_empty());
-        assert_eq!(posts.tweets[0].text, "I will mention \\@klausi here");
+        assert_eq!(posts.tweets[0].text, "I will mention @\\klausi here");
 
         tweet.text = "I will mention @klausi here".to_string();
         let tweets = vec![tweet];
         let statuses = Vec::new();
         let posts = determine_posts(&statuses, &tweets, &DEFAULT_SYNC_OPTIONS);
         assert!(posts.tweets.is_empty());
-        assert_eq!(posts.toots[0].text, "I will mention \\@klausi here");
+        assert_eq!(posts.toots[0].text, "I will mention @\\klausi here");
+    }
+
+    // Test that the old way of escaping with \@username is considered the same
+    // as @\username
+    #[test]
+    fn mention_old_escaped() {
+        let mut status = get_mastodon_status();
+        status.content = "I will mention <span class=\"h-card\"><a href=\"https://example.com/@klausi\" class=\"u-url mention\">@<span>klausi</span></a></span> here".to_string();
+        let mut tweet = get_twitter_status();
+        tweet.text = "I will mention \\@klausi here".to_string();
+        assert!(toot_and_tweet_are_equal(&status, &tweet));
+
+        let tweets = vec![tweet.clone()];
+        let statuses = vec![status.clone()];
+        let posts = determine_posts(&statuses, &tweets, &DEFAULT_SYNC_OPTIONS);
+        assert!(posts.toots.is_empty());
+        assert!(posts.tweets.is_empty());
+
+        tweet.text = "I will mention @klausi here".to_string();
+        status.content = "I will mention \\@klausi here".to_string();
+        assert!(toot_and_tweet_are_equal(&status, &tweet));
+        let tweets = vec![tweet];
+        let statuses = vec![status];
+        let posts = determine_posts(&statuses, &tweets, &DEFAULT_SYNC_OPTIONS);
+        assert!(posts.toots.is_empty());
+        assert!(posts.tweets.is_empty());
     }
 
     // Test that direct toots starting with "@" are not copied to twitter.

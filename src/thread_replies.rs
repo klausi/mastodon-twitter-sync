@@ -565,7 +565,7 @@ mod tests {
         assert_eq!(sync_tweet.text, "Original");
         assert_eq!(
             sync_tweet.replies[0].text,
-            "Thanks \\@example for the inspiration 😃"
+            "Thanks @\\example for the inspiration 😃"
         );
     }
 }
