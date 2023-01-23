@@ -372,7 +372,7 @@ fn toot_shorten(text: &str, tweet_id: u64) -> String {
 pub fn mastodon_toot_get_text(toot: &Status) -> String {
     let mut replaced = match toot.reblog {
         None => toot.content.clone(),
-        Some(ref reblog) => format!("RT {}: {}", reblog.account.username, reblog.content),
+        Some(ref reblog) => format!("RT {}: {}", reblog.account.acct, reblog.content),
     };
     replaced = replaced.replace("<br />", "\n");
     replaced = replaced.replace("<br>", "\n");
