@@ -606,7 +606,7 @@ UNLISTED 🔓 ✅ Tagged people
 ✅ Followers
 ✅ People who look for it
 ❌ Local and federated timelines
-✅ Boostable… https://mastodon.social/@klausi/98999025586548863"
+✅… https://mastodon.social/@klausi/98999025586548863"
         );
     }
 
