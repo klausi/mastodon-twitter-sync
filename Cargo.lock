@@ -363,9 +363,9 @@ dependencies = [
 
 [[package]]
 name = "egg-mode-text"
-version = "1.15.0"
+version = "1.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c83fe6fa4bcb27d9ebab2856f6515590ac621cac1f1dc51d9410b7e546d77ac"
+checksum = "32956c707081e778906fc194f400fb9e1c220a494f50eebd4a3bfe1224d21c27"
 dependencies = [
  "lazy_static",
  "regex",
