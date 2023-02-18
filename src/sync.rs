@@ -481,7 +481,7 @@ pub fn tweet_get_attachments(tweet: &Tweet) -> Vec<NewMedia> {
                     // Use the video variant with the highest bitrate.
                     for variant in &video_info.variants {
                         if let Some(video_bitrate) = variant.bitrate {
-                            if video_bitrate > bitrate {
+                            if video_bitrate >= bitrate {
                                 bitrate = video_bitrate;
                                 media_url = variant.url.clone();
                             }
