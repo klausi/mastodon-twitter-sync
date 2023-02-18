@@ -138,7 +138,7 @@ pub fn run(args: Args) -> Result<()> {
         if !args.skip_existing_posts {
             if let Err(e) = post_to_mastodon(&mastodon, &toot, args.dry_run) {
                 eprintln!("Error posting toot to Mastodon: {e:#?}");
-                process::exit(5);
+                continue;
             }
         }
         // Posting API call was successful: store text in cache to prevent any
@@ -153,7 +153,7 @@ pub fn run(args: Args) -> Result<()> {
         if !args.skip_existing_posts {
             if let Err(e) = rt.block_on(post_to_twitter(&token, &tweet, args.dry_run)) {
                 eprintln!("Error posting tweet to Twitter: {e:#?}");
-                process::exit(6);
+                continue;
             }
         }
         // Posting API call was successful: store text in cache to prevent any
