@@ -7,6 +7,7 @@ use elefren::entities::status::Status;
 struct Reply {
     pub id: u64,
     pub text: String,
+    pub content_warning: Option<String>,
     pub attachments: Vec<NewMedia>,
     pub in_reply_to_id: u64,
 }
@@ -43,7 +44,13 @@ pub fn determine_thread_replies(
 
             // The tweet is not on Mastodon yet, check if we should post it.
             // Fetch the tweet text into a String object
-            let decoded_tweet = tweet_unshorten_decode(tweet);
+            let mut decoded_tweet = tweet_unshorten_decode(tweet);
+
+            // Check for a content warning
+            let content_warning = tweet_find_content_warning(&decoded_tweet);
+
+            // If present, strip CW from post text. Mastodon has a dedicated field for that
+            decoded_tweet = tweet_strip_content_warning(&decoded_tweet);
 
             // Check if hashtag filtering is enabled and if the tweet matches.
             if let Some(sync_hashtag) = &options.sync_hashtag_twitter {
@@ -59,6 +66,7 @@ pub fn determine_thread_replies(
                 Reply {
                     id: tweet.id,
                     text: decoded_tweet,
+                    content_warning,
                     attachments: tweet_get_attachments(tweet),
                     in_reply_to_id: tweet.in_reply_to_status_id.unwrap_or_else(|| {
                         panic!("Twitter reply ID missing on tweet {}", tweet.id)
@@ -90,7 +98,14 @@ pub fn determine_thread_replies(
                 }
             }
 
-            let fulltext = mastodon_toot_get_text(toot);
+            let mut fulltext = mastodon_toot_get_text(toot);
+            let mut content_warning: Option<String> = None;
+
+            // add content_warning if present
+            if toot.spoiler_text.len() > 0 {
+                fulltext = add_content_warning_to_post_text(&fulltext, toot.spoiler_text.as_str());
+                content_warning = Some(toot.spoiler_text.clone());
+            }
 
             // The toot is not on Twitter yet, check if we should post it.
             // Check if hashtag filtering is enabled and if the tweet matches.
@@ -116,6 +131,7 @@ pub fn determine_thread_replies(
                         .parse::<u64>()
                         .unwrap_or_else(|_| panic!("Mastodon status ID is not u64: {}", toot.id)),
                     text: post,
+                    content_warning,
                     attachments: toot_get_attachments(toot),
                     in_reply_to_id: in_reply_to_id.parse::<u64>().unwrap_or_else(|_| {
                         panic!("Mastodon reply ID is not u64: {in_reply_to_id}")
@@ -157,6 +173,7 @@ fn insert_twitter_replies(
                     if toot_and_tweet_are_equal(toot, tweet) {
                         sync_statuses.push(NewStatus {
                             text: reply.text.clone(),
+                            content_warning: reply.content_warning.clone(),
                             attachments: reply.attachments.clone(),
                             replies: Vec::new(),
                             in_reply_to_id: Some(toot.id.parse().unwrap_or_else(|_| {
@@ -197,6 +214,7 @@ fn insert_mastodon_replies(
                     if toot_and_tweet_are_equal(toot, tweet) {
                         sync_statuses.push(NewStatus {
                             text: reply.text.clone(),
+                            content_warning: reply.content_warning.clone(),
                             attachments: reply.attachments.clone(),
                             replies: Vec::new(),
                             in_reply_to_id: Some(tweet.id),
@@ -216,6 +234,7 @@ fn insert_reply_on_status(status: &mut NewStatus, reply: &Reply) -> bool {
     if reply.in_reply_to_id == status.original_id {
         status.replies.push(NewStatus {
             text: reply.text.clone(),
+            content_warning: None,
             attachments: reply.attachments.clone(),
             replies: Vec::new(),
             in_reply_to_id: None,
