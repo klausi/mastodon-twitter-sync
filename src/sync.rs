@@ -793,15 +793,51 @@ UNLISTED 🔓 ✅ Tagged people
         assert!(posts.tweets.is_empty());
     }
 
-    // Test that direct toots starting with "@" are not copied to twitter.
+    // Test that direct toots are not copied to twitter.
     #[test]
     fn direct_toot() {
         let mut status = get_mastodon_status();
-        status.content = "@Test Hello! http://example.com".to_string();
+        status.content = "Test Hello! http://example.com".to_string();
+        status.visibility = Visibility::Direct;
         let tweets = Vec::new();
         let statuses = vec![status];
         let posts = determine_posts(&statuses, &tweets, &DEFAULT_SYNC_OPTIONS);
-        assert!(posts.toots.is_empty());
+        assert!(posts.tweets.is_empty());
+    }
+
+    // test that public toots are synced
+    #[test]
+    fn public_toot() {
+        let mut status = get_mastodon_status();
+        status.content = "@Test Hello! http://example.com".to_string();
+        status.visibility = Visibility::Public;
+        let tweets = Vec::new();
+        let statuses = vec![status];
+        let posts = determine_posts(&statuses, &tweets, &DEFAULT_SYNC_OPTIONS);
+        assert_eq!(posts.tweets.len(), 1);
+    }
+
+    // test that unlisted toots are synced
+    #[test]
+    fn unlisted_toot() {
+        let mut status = get_mastodon_status();
+        status.content = "Test Hello! http://example.com".to_string();
+        status.visibility = Visibility::Unlisted;
+        let tweets = Vec::new();
+        let statuses = vec![status];
+        let posts = determine_posts(&statuses, &tweets, &DEFAULT_SYNC_OPTIONS);
+        assert_eq!(posts.tweets.len(), 1);
+    }
+
+    // test that private toots are NOT synced
+    #[test]
+    fn private_toot() {
+        let mut status = get_mastodon_status();
+        status.content = "Test Hello! http://example.com".to_string();
+        status.visibility = Visibility::Private;
+        let tweets = Vec::new();
+        let statuses = vec![status];
+        let posts = determine_posts(&statuses, &tweets, &DEFAULT_SYNC_OPTIONS);
         assert!(posts.tweets.is_empty());
     }
 
