@@ -1453,6 +1453,29 @@ QT test123: Original text"
         assert_eq!(tweet.attachments[0].alt_text, Some("a".repeat(1_000)));
     }
 
+    #[test]
+    fn tweet_add_content_warning() {
+        let fulltext = "blabalblabla";
+        let spoiler_text = "this is a unittest";
+        let expected = "CW: ".to_string() + spoiler_text + "\n\n" + fulltext;
+
+        assert_eq!(
+            expected,
+            add_content_warning_to_post_text(fulltext, spoiler_text)
+        );
+    }
+
+    #[test]
+    fn tweet_recognize_content_warning() {
+        let expected = "Some Unittest dude";
+        let decoded_tweet = "CW: ".to_string() + expected + "\nsome text";
+
+        assert_eq!(
+            expected,
+            tweet_find_content_warning(&decoded_tweet).unwrap()
+        );
+    }
+
     pub fn get_mastodon_status() -> Status {
         read_mastodon_status("src/mastodon_status.json")
     }
