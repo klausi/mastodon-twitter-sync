@@ -3,6 +3,7 @@ use anyhow::Result;
 use egg_mode::tweet::Tweet;
 use egg_mode_text::character_count;
 use elefren::entities::status::Status;
+use elefren::status_builder::Visibility;
 use regex::Regex;
 use std::collections::HashSet;
 use std::fs;
@@ -134,9 +135,11 @@ pub fn determine_posts(
             None => tweet_shorten(&fulltext, &toot.url),
             Some(reblog) => tweet_shorten(&fulltext, &reblog.url),
         };
-        // Skip direct toots to other Mastodon users, even if they are public.
-        if post.starts_with('@') {
-            continue;
+
+        // ignore toots that are not public or unlisted
+        match toot.visibility {
+            Visibility::Public | Visibility::Unlisted => (),
+            _ => continue,
         }
 
         for tweet in twitter_statuses {

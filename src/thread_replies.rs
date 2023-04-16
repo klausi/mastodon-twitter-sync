@@ -1,6 +1,7 @@
 use crate::sync::*;
 use egg_mode::tweet::Tweet;
 use elefren::entities::status::Status;
+use elefren::status_builder::Visibility;
 
 // A reply to a post that has the ID to the parent post.
 #[derive(Debug)]
@@ -80,6 +81,12 @@ pub fn determine_thread_replies(
         if let Some(user_id) = &toot.in_reply_to_account_id {
             if user_id != &toot.account.id {
                 continue;
+            }
+
+            // ignore toots that are not public or unlisted
+            match toot.visibility {
+                Visibility::Public | Visibility::Unlisted => (),
+                _ => continue,
             }
 
             for tweet in twitter_statuses {
