@@ -3,10 +3,12 @@ use anyhow::Result;
 use egg_mode::tweet::Tweet;
 use egg_mode_text::character_count;
 use elefren::entities::status::Status;
-use regex::Regex;
+use regex::{Regex, RegexBuilder};
 use std::collections::HashSet;
 use std::fs;
 use unicode_segmentation::UnicodeSegmentation;
+
+const TWITTER_CW_REGEX: &'static str = r"^(RT .*: )?CW: (.*?\n)(.*)$";
 
 // Represents new status updates that should be posted to Twitter (tweets) and
 // Mastodon (toots).
@@ -30,6 +32,7 @@ impl StatusUpdates {
 pub struct NewStatus {
     pub text: String,
     pub attachments: Vec<NewMedia>,
+    pub content_warning: Option<String>,
     // A list of further statuses that are new replies to this new status. Used
     // to sync threads.
     pub replies: Vec<NewStatus>,
@@ -99,7 +102,13 @@ pub fn determine_posts(
 
         // The tweet is not on Mastodon yet, check if we should post it.
         // Fetch the tweet text into a String object
-        let decoded_tweet = tweet_unshorten_decode(tweet);
+        let mut decoded_tweet = tweet_unshorten_decode(tweet);
+
+        // Check for a content warning
+        let content_warning = tweet_find_content_warning(&decoded_tweet);
+
+        // If present, strip CW from post text. Mastodon has a dedicated field for that
+        decoded_tweet = tweet_strip_content_warning(&decoded_tweet);
 
         // Check if hashtag filtering is enabled and if the tweet matches.
         if let Some(sync_hashtag) = &options.sync_hashtag_twitter {
@@ -111,6 +120,7 @@ pub fn determine_posts(
 
         updates.toots.push(NewStatus {
             text: decoded_tweet,
+            content_warning,
             attachments: tweet_get_attachments(tweet),
             replies: Vec::new(),
             in_reply_to_id: None,
@@ -128,7 +138,15 @@ pub fn determine_posts(
             // Skip reblogs when sync_reblogs is disabled
             continue;
         }
-        let fulltext = mastodon_toot_get_text(toot);
+        let mut fulltext = mastodon_toot_get_text(toot);
+        let mut content_warning: Option<String> = None;
+
+        // add content_warning if present
+        if toot.spoiler_text.len() > 0 {
+            fulltext = add_content_warning_to_post_text(&fulltext, toot.spoiler_text.as_str());
+            content_warning = Some(toot.spoiler_text.clone());
+        }
+
         // If this is a reblog/boost then take the URL to the original toot.
         let post = match &toot.reblog {
             None => tweet_shorten(&fulltext, &toot.url),
@@ -158,6 +176,7 @@ pub fn determine_posts(
 
         updates.tweets.push(NewStatus {
             text: post,
+            content_warning,
             attachments: toot_get_attachments(toot),
             replies: Vec::new(),
             in_reply_to_id: None,
@@ -187,7 +206,13 @@ pub fn toot_and_tweet_are_equal(toot: &Status, tweet: &Tweet) -> bool {
     }
 
     // Strip markup from Mastodon toot and unify message for comparison.
-    let toot_text = unify_post_content(mastodon_toot_get_text(toot));
+    let mut toot_text = unify_post_content(mastodon_toot_get_text(toot));
+
+    // if toot has a spoiler add for comparison
+    if toot.spoiler_text.len() > 0 {
+        toot_text = add_content_warning_to_post_text(&toot_text, toot.spoiler_text.as_str());
+    }
+
     // Replace those ugly t.co URLs in the tweet text.
     let tweet_text = unify_post_content(tweet_unshorten_decode(tweet));
 
@@ -541,6 +566,44 @@ fn truncate_option_string(stringy: Option<String>, max_chars: usize) -> Option<S
             Some((idx, _)) => Some(string[..idx].to_string()),
         },
         None => None,
+    }
+}
+
+/// adds a post's content warning inline post, as twitter doesn't support any special place for it
+/// extracted to dedicated function for consistent generation and central place to change if needed.
+pub fn add_content_warning_to_post_text(post_text: &str, content_warning: &str) -> String {
+    format!("CW: {}\n\n{}", content_warning, post_text)
+}
+
+/// searches for a inline-content warning
+pub fn tweet_find_content_warning(decoded_tweet: &str) -> Option<String> {
+    // Check for a content warning
+    let re = RegexBuilder::new(TWITTER_CW_REGEX)
+        .dot_matches_new_line(true)
+        .build()
+        .unwrap();
+
+    match re.captures(decoded_tweet) {
+        Some(captures) => Some(captures.get(2).unwrap().as_str().trim().to_string()),
+        None => None,
+    }
+}
+
+/// strips an inline-content warning if present
+pub fn tweet_strip_content_warning(decoded_tweet: &str) -> String {
+    // Check for a content warning
+    let re = RegexBuilder::new(TWITTER_CW_REGEX)
+        .dot_matches_new_line(true)
+        .build()
+        .unwrap();
+
+    match re.captures(decoded_tweet) {
+        Some(captures) => format!(
+            "{}{}",
+            captures.get(1).map_or("", |m| m.as_str()),
+            captures.get(3).unwrap().as_str(),
+        ),
+        None => decoded_tweet.to_string(),
     }
 }
 

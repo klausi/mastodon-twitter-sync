@@ -105,6 +105,10 @@ fn send_single_post_to_mastodon(mastodon: &Mastodon, toot: &NewStatus) -> Result
 
     let mut status_builder = StatusBuilder::new();
     status_builder.status(&toot.text);
+    if let Some(spoiler) = toot.content_warning.as_ref() {
+        status_builder.sensitive(true);
+        status_builder.spoiler_text(spoiler);
+    }
     status_builder.media_ids(media_ids);
     if let Some(parent_id) = toot.in_reply_to_id {
         status_builder.in_reply_to(parent_id.to_string());
