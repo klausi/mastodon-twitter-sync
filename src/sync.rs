@@ -3,6 +3,7 @@ use anyhow::Result;
 use egg_mode::tweet::Tweet;
 use egg_mode_text::character_count;
 use elefren::entities::status::Status;
+use elefren::status_builder::Visibility;
 use regex::Regex;
 use std::collections::HashSet;
 use std::fs;
@@ -134,9 +135,11 @@ pub fn determine_posts(
             None => tweet_shorten(&fulltext, &toot.url),
             Some(reblog) => tweet_shorten(&fulltext, &reblog.url),
         };
-        // Skip direct toots to other Mastodon users, even if they are public.
-        if post.starts_with('@') {
-            continue;
+
+        // ignore toots that are not public or unlisted
+        match toot.visibility {
+            Visibility::Public | Visibility::Unlisted => (),
+            _ => continue,
         }
 
         for tweet in twitter_statuses {
@@ -790,15 +793,51 @@ UNLISTED 🔓 ✅ Tagged people
         assert!(posts.tweets.is_empty());
     }
 
-    // Test that direct toots starting with "@" are not copied to twitter.
+    // Test that direct toots are not copied to twitter.
     #[test]
     fn direct_toot() {
         let mut status = get_mastodon_status();
-        status.content = "@Test Hello! http://example.com".to_string();
+        status.content = "Test Hello! http://example.com".to_string();
+        status.visibility = Visibility::Direct;
         let tweets = Vec::new();
         let statuses = vec![status];
         let posts = determine_posts(&statuses, &tweets, &DEFAULT_SYNC_OPTIONS);
-        assert!(posts.toots.is_empty());
+        assert!(posts.tweets.is_empty());
+    }
+
+    // test that public toots are synced
+    #[test]
+    fn public_toot() {
+        let mut status = get_mastodon_status();
+        status.content = "@Test Hello! http://example.com".to_string();
+        status.visibility = Visibility::Public;
+        let tweets = Vec::new();
+        let statuses = vec![status];
+        let posts = determine_posts(&statuses, &tweets, &DEFAULT_SYNC_OPTIONS);
+        assert_eq!(posts.tweets.len(), 1);
+    }
+
+    // test that unlisted toots are synced
+    #[test]
+    fn unlisted_toot() {
+        let mut status = get_mastodon_status();
+        status.content = "Test Hello! http://example.com".to_string();
+        status.visibility = Visibility::Unlisted;
+        let tweets = Vec::new();
+        let statuses = vec![status];
+        let posts = determine_posts(&statuses, &tweets, &DEFAULT_SYNC_OPTIONS);
+        assert_eq!(posts.tweets.len(), 1);
+    }
+
+    // test that private toots are NOT synced
+    #[test]
+    fn private_toot() {
+        let mut status = get_mastodon_status();
+        status.content = "Test Hello! http://example.com".to_string();
+        status.visibility = Visibility::Private;
+        let tweets = Vec::new();
+        let statuses = vec![status];
+        let posts = determine_posts(&statuses, &tweets, &DEFAULT_SYNC_OPTIONS);
         assert!(posts.tweets.is_empty());
     }
 
